@@ -1,4 +1,4 @@
 echo "Setting up the project..."
 
-npm install
-mkdir -p www/css/build www/js/build
+npm install # Install project deps
+mkdir -p www/css/build www/js/build # make required dirs

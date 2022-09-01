@@ -2,8 +2,8 @@
 /build.json
 /www/js/build
 /www/css/build
-/plugins
 /platforms
+#/plugins
 /package-lock.json
 /keystore.jks
 /platforms/android/debug-signing.properties
