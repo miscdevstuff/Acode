@@ -154,7 +154,6 @@ export default function addTouchListeners(editor) {
       e.preventDefault();
     }
 
-    e.target.ontouchstart = preventDefault;
     e.target.oncontextmenu = preventDefault;
 
     selectionTimeout = setTimeout(() => {
