@@ -1,0 +1,20 @@
+{
+    "android": {
+        "debug": {
+            "keystore": "./public.keystore",
+            "storePassword": "public",
+            "alias": "public",
+            "password" : "public",
+            "keystoreType": "",
+            "packageType": "apk"
+        },
+        "release": {
+            "keystore": "./public.keystore",
+            "storePassword": "public",
+            "alias": "public",
+            "password" : "public",
+            "keystoreType": "",
+            "packageType": "apk"
+        }
+    }
+}
