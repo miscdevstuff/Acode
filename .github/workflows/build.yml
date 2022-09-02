@@ -42,16 +42,20 @@ jobs:
       run: cordova platform add android
 
     - name: Export apkname to env
-      run: echo "APK_NAME=acode-debug_$(cat package.json | jq -r '.version').apk" >> $GITHUB_ENV
+      run: |
+                echo "APK_DEBUG=acode-debug_$(cat package.json | jq -r '.version').apk" >> $GITHUB_ENV
+                echo "APK_RELEASE=acode-release_$(cat package.json | jq -r '.version').apk" >> $GITHUB_ENV
 
     - name: Build app
-      run: npm run build android paid d
+      run: npm run build android paid p
 
-    - run: mv platforms/android/app/build/outputs/apk/debug/app-debug.apk ${{ env.APK_NAME }}
+#    - run: cp platforms/android/app/build/outputs/apk/debug/app-debug.apk ${{ env.APK_DEBUG }}
+    - run: cp platforms/android/app/build/outputs/apk/release/app-release.apk ${{ env.APK_RELEASE }}
 
     - name: Upload apk
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
-        name: Acode debug
-        path: ${{ env.APK_NAME }}
+        name: Acode release
+        path: ${{ env.APK_RELEASE }}
+        if-no-files-found: warn
 
