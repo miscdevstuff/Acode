@@ -28,7 +28,7 @@
       "cordova-plugin-device": {},
       "cordova-plugin-iap": {},
       "cordova-plugin-sftp": {},
-      "cordova-plugin-server": {},
+      "cordova-plugin-webserver": {},
       "cordova-plugin-file": {
         "ANDROIDX_WEBKIT_VERSION": "1.4.0"
       },

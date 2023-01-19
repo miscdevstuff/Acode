@@ -12,9 +12,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Install jq
-      run: sudo apt update && sudo apt install jq
-
     - name: Setup java
       uses: actions/setup-java@v3
       with:
@@ -35,27 +32,22 @@ jobs:
     - name: Install cordova
       run: sudo npm install -g cordova
 
+    - name: Install yarn
+      run: sudo npm install -g yarn
+
     - name: Setup project, install app plugins and deps
-      run: npm run setup
+      run: yarn setup
 
-    - name: Add android platform to cordova
-      run: cordova platform add android
+    - name: Configure the platform
+      run: yarn clean
 
-    - name: Export apkname to env
-      run: |
-                echo "APK_DEBUG=acode-debug_$(cat package.json | jq -r '.version').apk" >> $GITHUB_ENV
-                echo "APK_RELEASE=acode-release_$(cat package.json | jq -r '.version').apk" >> $GITHUB_ENV
-
-    - name: Build app
-      run: npm run build android paid p
-
-#    - run: cp platforms/android/app/build/outputs/apk/debug/app-debug.apk ${{ env.APK_DEBUG }}
-    - run: cp platforms/android/app/build/outputs/apk/release/app-release.apk ${{ env.APK_RELEASE }}
+    - name: Build Android prod aab
+      run: yarn build android paid prod
 
     - name: Upload apk
       uses: actions/upload-artifact@v3
       with:
-        name: Acode release
-        path: ${{ env.APK_RELEASE }}
-        if-no-files-found: warn
+        name: app-release
+        path: ./platforms/android/app/build/outputs/apk/release/*.apk
+        if-no-files-found: error
 
