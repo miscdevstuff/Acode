@@ -34,7 +34,7 @@
       "cordova-plugin-system": {},
       "cordova-plugin-sftp": {},
       "cordova-plugin-iap": {},
-      "cordova-plugin-webserver": {}
+      "cordova-plugin-server": {}
     },
     "platforms": [
       "android"
