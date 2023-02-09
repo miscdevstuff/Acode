@@ -1,6 +1,6 @@
 {
-  "name": "com.foxdebug.acode",
-  "displayName": "Acode",
+  "name": "com.foxdebug.acodeplus",
+  "displayName": "Acode plus",
   "version": "1.8.3",
   "description": "Acode is a code editor for android",
   "main": "index.js",
