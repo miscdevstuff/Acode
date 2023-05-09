@@ -32,11 +32,16 @@ jobs:
                 export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/
                 export PATH=$PATH:$ANDROID_SDK_ROOT/emulator/
 
+    - name: Setup NodeJS
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.x
+
     - name: Install cordova
-      run: sudo npm install -g cordova
+      run: npm install -g cordova
 
     - name: Install yarn
-      run: sudo npm install -g yarn
+      run: npm install -g yarn
 
     - name: Setup project, install app plugins and deps
       run: yarn setup
@@ -44,13 +49,18 @@ jobs:
     - name: Configure the platform
       run: yarn clean
 
-    - name: Build Android prod aab
+    - name: Build Android prod
       run: yarn build android paid prod
+
+    - name: Sign apk
+      run: |
+                apksigner="$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -r | head -n 1)"
+                ${apksigner} sign --ks public.jks --ks-key-alias public --ks-pass pass:public --key-pass pass:public --in ./platforms/android/app/build/outputs/apk/release/*.apk --out ./platforms/android/app/build/outputs/apk/release/app-release-signed.apk
 
     - name: Upload apk
       uses: actions/upload-artifact@v3
       with:
-        name: app-release
-        path: ./platforms/android/app/build/outputs/apk/release/*.apk
+        name: app-release-signed
+        path: ./platforms/android/app/build/outputs/apk/release/app-release-signed.apk
         if-no-files-found: error
 
