@@ -128,6 +128,10 @@ export default function actions(action, value) {
       toggleSearch();
       return actionStack.has('search-bar');
 
+	case 'goto':
+      acode.exec('goto');
+      return true;
+
     case 'toggle':
       toggle();
       return true;

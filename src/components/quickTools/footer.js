@@ -18,6 +18,7 @@ export const Row1 = ({ extras, shift, ctrl, save }) => <div id='row1' className=
     <RowItem icon='undo' action='command' value='undo' />
     <RowItem icon='redo' action='command' value='redo' />
     <RowItem icon='search' action='search' />
+    <RowItem icon='subdirectory_arrow_left' action='goto' />
     <RowItem ref={save} icon='save' action='command' value='saveFile' />
     <RowItem icon='letters' action='key' value={27} letters='esc' />
   </div>
