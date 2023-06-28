@@ -1,5 +1,5 @@
-import settingsPage from '../components/settingPage';
-import appSettings from '../lib/settings';
+import settingsPage from 'components/settingsPage';
+import appSettings from 'lib/settings';
 
 export default function defaultFormatter(languageName) {
   const title = strings.formatter;
@@ -23,7 +23,7 @@ export default function defaultFormatter(languageName) {
         if (formatter) {
           return formatter.name;
         }
-        return strings.none
+        return strings.none;
       },
       select: options
     };

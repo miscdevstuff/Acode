@@ -52,6 +52,8 @@ async function saveFile(file, isSaveAs = false) {
     } else {
       filename = await check(url, file.filename);
     }
+
+    if (!filename) return;
   }
 
   createFile = isSaveAs || url;
@@ -120,7 +122,7 @@ async function saveFile(file, isSaveAs = false) {
   }
 
   async function getfilename(url, name) {
-    const filename = await dialogs.prompt(
+    let filename = await dialogs.prompt(
       strings['enter file name'],
       name || '',
       strings['new file'],
@@ -130,6 +132,8 @@ async function saveFile(file, isSaveAs = false) {
       },
     );
 
+    filename = helpers.fixFilename(filename);
+    if (!filename) return null;
     return await check(url, filename);
   }
 
@@ -137,15 +141,15 @@ async function saveFile(file, isSaveAs = false) {
     const pathname = Url.join(url, filename);
 
     const fs = fsOperation(pathname);
-    if (await fs.exists()) {
-      const action = await dialogs.select(strings['file already exists'], [
-        ['overwrite', strings.overwrite],
-        ['newname', strings['enter file name']],
-      ]);
+    if (!await fs.exists()) return filename;
 
-      if (action === 'newname') {
-        filename = await getfilename(url, filename);
-      }
+    const action = await dialogs.select(strings['file already exists'], [
+      ['overwrite', strings.overwrite],
+      ['newname', strings['enter file name']],
+    ]);
+
+    if (action === 'newname') {
+      filename = await getfilename(url, filename);
     }
 
     return filename;

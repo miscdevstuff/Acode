@@ -1,16 +1,17 @@
 import mimeType from 'mime-types';
 import { marked } from 'marked';
 import mustache from 'mustache';
-import $_console from '../views/console.hbs';
-import $_markdown from '../views/markdown.hbs';
-import helpers from '../utils/helpers';
-import dialogs from '../components/dialogs';
+import $_console from 'views/console.hbs';
+import $_markdown from 'views/markdown.hbs';
+import helpers from 'utils/helpers';
+import dialogs from 'components/dialogs';
 import constants from './constants';
-import fsOperation from '../fileSystem';
-import Url from '../utils/Url';
+import fsOperation from 'fileSystem';
+import Url from 'utils/Url';
 import openFolder from './openFolder';
 import appSettings from './settings';
 import EditorFile from './editorFile';
+import tutorial from 'components/tutorial';
 
 /**@type {Server} */
 let webServer;
@@ -51,12 +52,7 @@ async function run(
 
   if (!isConsole && !localStorage.__init_runPreview) {
     localStorage.__init_runPreview = true;
-
-    await new Promise((resolve) => {
-      dialogs.alert(strings.info.toUpperCase(), strings['preview info'], () => {
-        resolve();
-      });
-    });
+    tutorial('run-preview', strings['preview info']);
   }
 
   const uuid = helpers.uuid();
@@ -251,8 +247,8 @@ async function run(
       }
 
       switch (ext) {
-        case 'htm':
-        case 'html':
+        case '.htm':
+        case '.html':
           if (file) {
             sendHTML(file.session.getValue(), reqId);
           } else {
@@ -260,7 +256,7 @@ async function run(
           }
           break;
 
-        case 'md':
+        case '.md':
           if (file) {
             const html = marked.parse(file.session.getValue());
             const doc = mustache.render($_markdown, {

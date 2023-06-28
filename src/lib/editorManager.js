@@ -16,17 +16,19 @@ import { setCommands, setKeyBindings } from 'ace/commands';
  */
 async function EditorManager($header, $body) {
   /**
-   * @type {Collaspable & HTMLElement}
+   * @type {Collapsible & HTMLElement}
    */
   let $openFileList;
   let TIMEOUT_VALUE = 500;
   let heightOffset = Math.round(screen.height - innerHeight);
   let preventScrollbarV = false;
   let preventScrollbarH = false;
-  let scrollBarVisiblityCount = 0;
-  let timeoutQuicktoolToggler;
+  let scrollBarVisibilityCount = 0;
+  let timeoutQuicktoolsToggler;
   let timeoutHeaderToggler;
   let isScrolling = false;
+  let lastScrollTop = 0;
+  let lastScrollLeft = 0;
 
   const { scrollbarSize } = appSettings.value;
   const events = {
@@ -57,7 +59,7 @@ async function EditorManager($header, $body) {
   const $hScrollbar = ScrollBar({
     width: scrollbarSize,
     onscroll: onscrollH,
-    onscrollend: onscrollHend,
+    onscrollend: onscrollHEnd,
     parent: $body,
     placement: 'bottom',
   });
@@ -129,8 +131,8 @@ async function EditorManager($header, $body) {
       activeFile.focusedBefore = activeFile.focused;
     }
     if (isScrolling) return;
-    $vScrollbar.hide();
-    $hScrollbar.hide();
+    // $vScrollbar.hide();
+    // $hScrollbar.hide();
     setTimeout(() => {
       if (isCursorVisible()) return;
       editor.renderer.scrollCursorIntoView();
@@ -379,7 +381,7 @@ async function EditorManager($header, $body) {
     editor._emit('scroll', editor);
   }
 
-  function onscrollHend() {
+  function onscrollHEnd() {
     preventScrollbarH = false;
   }
 
@@ -388,11 +390,16 @@ async function EditorManager($header, $body) {
    * @param {Boolean} render
    */
   function onscrollleft(render = true) {
-    if (preventScrollbarH) return;
+    if (appSettings.value.textWrap || preventScrollbarH) return;
     const session = editor.getSession();
-    const editorWidth = getEditorWidth(editor);
-    const factor = (session.getScrollLeft() / editorWidth).toFixed(2);
+    const scrollLeft = session.getScrollLeft();
 
+    if (scrollLeft === lastScrollLeft) return;
+
+    const editorWidth = getEditorWidth(editor);
+    const factor = (scrollLeft / editorWidth).toFixed(2);
+
+    lastScrollLeft = scrollLeft;
     $hScrollbar.value = factor;
     if (render) $hScrollbar.render();
     editor._emit('scroll', 'horizontal');
@@ -405,12 +412,17 @@ async function EditorManager($header, $body) {
   function onscrolltop(render = true) {
     if (preventScrollbarV) return;
     const session = editor.getSession();
-    const editorHeight = getEditorHeight(editor);
-    const factor = (session.getScrollTop() / editorHeight).toFixed(2);
+    const scrollTop = session.getScrollTop();
 
+    if (scrollTop === lastScrollTop) return;
+
+    const editorHeight = getEditorHeight(editor);
+    const factor = (scrollTop / editorHeight).toFixed(2);
+
+    lastScrollTop = scrollTop;
     $vScrollbar.value = factor;
     if (render) $vScrollbar.render();
-    editor._emit('scroll', 'verticle');
+    editor._emit('scroll', 'vertical');
   }
 
   function updateFloatingButton(show = false) {
@@ -418,11 +430,11 @@ async function EditorManager($header, $body) {
     const { $toggler } = quickTools;
 
     if (show) {
-      if (scrollBarVisiblityCount) --scrollBarVisiblityCount;
+      if (scrollBarVisibilityCount) --scrollBarVisibilityCount;
 
-      if (!scrollBarVisiblityCount) {
+      if (!scrollBarVisibilityCount) {
         clearTimeout(timeoutHeaderToggler);
-        clearTimeout(timeoutQuicktoolToggler);
+        clearTimeout(timeoutQuicktoolsToggler);
 
         if (appSettings.value.floatingButton) {
           $toggler.classList.remove('hide');
@@ -433,10 +445,10 @@ async function EditorManager($header, $body) {
         root.appendOuter($headerToggler);
       }
     } else {
-      if (!scrollBarVisiblityCount) {
+      if (!scrollBarVisibilityCount) {
         if ($toggler.isConnected) {
           $toggler.classList.add('hide');
-          timeoutQuicktoolToggler = setTimeout(
+          timeoutQuicktoolsToggler = setTimeout(
             () => $toggler.remove(),
             300,
           );
@@ -447,7 +459,7 @@ async function EditorManager($header, $body) {
         }
       }
 
-      ++scrollBarVisiblityCount;
+      ++scrollBarVisibilityCount;
     }
   }
 
@@ -476,7 +488,7 @@ async function EditorManager($header, $body) {
     let $list;
 
     if ($openFileList) {
-      if ($openFileList.classList.contains('collaspable')) {
+      if ($openFileList.classList.contains('collapsible')) {
         $list = Array.from($openFileList.$ul.children);
       } else {
         $list = Array.from($openFileList.children);
@@ -511,7 +523,7 @@ async function EditorManager($header, $body) {
       $openFileList = list(strings['active files']);
       $openFileList.classList.add('file-list');
       if ($list) $openFileList.$ul.append(...$list);
-      $openFileList.uncollapse();
+      $openFileList.expand();
 
       const oldAppend = $openFileList.$ul.append;
       $openFileList.append = (...args) => {
