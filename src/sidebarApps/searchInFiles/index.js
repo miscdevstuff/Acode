@@ -7,8 +7,10 @@ import fsOperation from 'fileSystem';
 import openFile from 'lib/openFile';
 import addTouchListeners from 'ace/touchHandler';
 import defineMode from './searchResultMode';
-import Sidebar, { preventSlide } from 'components/sidebar';
 import settings from 'lib/settings';
+import helpers from 'utils/helpers';
+import escapeStringRegexp from 'escape-string-regexp';
+import Sidebar, { preventSlide } from 'components/sidebar';
 
 const workers = [];
 const results = [];
@@ -78,7 +80,7 @@ const store = {
   },
 };
 
-const debounceSearch = debounce(searchAll, 500);
+const debounceSearch = helpers.debounce(searchAll, 500);
 
 let useIncludeAndExclude = false;
 /**@type {AceAjax.Editor} */
@@ -490,31 +492,6 @@ function getOptions() {
 }
 
 /**
- * Creates a debounced function that delays invoking the input function until after 'wait' milliseconds have elapsed 
- * since the last time the debounced function was invoked. Useful for implementing behavior that should only happen 
- * after the input is complete.
- *
- * @param {Function} func - The function to debounce.
- * @param {number} wait - The number of milliseconds to delay.
- * @returns {Function} The new debounced function.
- * @example
- * 
- * // Avoid costly calculations while the window size is in flux.
- * window.addEventListener('resize', debounce(myFunction, 200));
- */
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-/**
  * Binds an event listener to the 'onref' method of the specified element reference.
  *
  * @param {Ref} $ref - The element reference containing the 'onref' method.
@@ -632,7 +609,7 @@ function toRegex(search, options, lookBehind = false) {
   const { caseSensitive = false, wholeWord = false, regExp = false } = options;
 
   let flags = caseSensitive ? 'gm' : 'gim';
-  let regexString = regExp ? search : search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let regexString = regExp ? search : escapeStringRegexp(search);
 
   if (wholeWord) {
     const wordBoundary = '\\b';

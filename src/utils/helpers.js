@@ -1,12 +1,10 @@
-import iconv from 'iconv-lite';
 import ajax from '@deadlyjack/ajax';
 import escapeStringRegexp from 'escape-string-regexp';
 import constants from 'lib/constants';
-import dialogs from 'dialogs';
 import path from './Path';
 import Url from './Url';
 import Uri from './Uri';
-import settings from 'lib/settings';
+import alert from 'dialogs/alert';
 
 /**
  * Gets programming language name according to filename
@@ -47,6 +45,24 @@ function getFileType(filename) {
 }
 
 export default {
+  /**
+   * @deprecated This method is deprecated, use 'encodings.decode' instead.
+   * Decodes arrayBuffer to String according given encoding type
+   * @param {ArrayBuffer} arrayBuffer
+   * @param {String} [encoding='utf-8']
+   */
+  decodeText(arrayBuffer, encoding = 'utf-8') {
+
+    const isJson = encoding === 'json';
+    if (isJson) encoding = 'utf-8';
+
+    const uint8Array = new Uint8Array(arrayBuffer);
+    const result = new TextDecoder(encoding).decode(uint8Array);
+    if (isJson) {
+      return this.parseJSON(result);
+    }
+    return result;
+  },
   /**
    * Gets icon according to filename
    * @param {string} filename
@@ -162,7 +178,7 @@ export default {
     };
 
     const msg = this.errorMessage(err, ...args);
-    dialogs.alert(strings.error, msg, onhide);
+    alert(strings.error, msg, onhide);
     return promise;
   },
   /**
@@ -197,32 +213,6 @@ export default {
     } catch (e) {
       return null;
     }
-  },
-  /**
-   * Decodes arrayBuffer to String according given encoding type
-   * @param {ArrayBuffer} data
-   * @param {String} [encoding]
-   * @returns {Promise<string>}
-   */
-  decodeText(data, encoding) {
-    let isJson = false;
-
-    if (encoding === 'json') {
-      encoding = null;
-      isJson = true;
-    }
-
-    if (!encoding) {
-      encoding = settings.value.defaultFileEncoding;
-    }
-
-    const text = new TextDecoder(encoding).decode(data);
-
-    if (isJson) {
-      return this.parseJSON(text);
-    }
-
-    return text;
   },
   /**
    * Checks whether given type is directory or not
@@ -355,5 +345,27 @@ export default {
   fixFilename(name) {
     if (!name) return name;
     return name.replace(/(\r\n)+|\r+|\n+|\t+/g, '').trim();
+  },
+  /**
+   * Creates a debounced function that delays invoking the input function until after 'wait' milliseconds have elapsed 
+   * since the last time the debounced function was invoked. Useful for implementing behavior that should only happen 
+   * after the input is complete.
+   *
+   * @param {Function} func - The function to debounce.
+   * @param {number} wait - The number of milliseconds to delay.
+   * @returns {Function} The new debounced function.
+   * @example
+   * window.addEventListener('resize', debounce(myFunction, 200));
+   */
+  debounce(func, wait) {
+    let timeout;
+    return function debounced(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func.apply(this, args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
   }
 };
