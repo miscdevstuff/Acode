@@ -1,8 +1,16 @@
 # Change Log
 
-## [1.8.5] - Build 292
+## [1.8.5] - Build 295
 
 - New
+  - [x] **Scroll speed**
+    - New 'Fast x2' scroll speed.
+  - [x] **Touch handling**
+    - Prevent accidental touch when tapping tear drop.
+  - [x] **Color Preview**
+    - You can now see color preview in css, scss, less, stylus and sass codes.
+    - No need to select the whole color.
+    - Enable/disable this feature from editor settings.
   - [x] **Smaller app size**
     - Reduced app size.
   - [x] **Updated icon pack**

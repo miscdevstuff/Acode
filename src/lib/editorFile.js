@@ -248,9 +248,6 @@ export default class EditorFile {
 
     this.#onFilePosChange();
     this.#tab.addEventListener('click', tabOnclick.bind(this));
-    this.#tab.addEventListener('touchstart', () => {
-      this.focusedBefore = editorManager.editor.isFocused();
-    });
     appSettings.on('update:openFileListPos', this.#onFilePosChange);
 
     addFile(this);
@@ -658,9 +655,14 @@ export default class EditorFile {
    */
   makeActive() {
     const { activeFile, editor, switchFile } = editorManager;
-    if (activeFile?.id === this.id) return;
 
-    activeFile?.removeActive();
+
+    if (activeFile) {
+      if (activeFile.id === this.id) return;
+      activeFile.focusedBefore = activeFile.focused;
+      activeFile.removeActive();
+    }
+
     switchFile(this.id);
 
     if (this.focused) {
@@ -745,7 +747,7 @@ export default class EditorFile {
   async #fileAction(action, mimeType) {
     try {
       const uri = await this.#getShareableUri();
-      if (!mimeType) mimeType = mimeTypes.lookup(this.name);
+      if (!mimeType) mimeType = mimeTypes.lookup(this.name) || 'text/plain';
       system.fileAction(uri, this.filename, action, mimeType, this.#showNoAppError);
     } catch (error) {
       toast(strings.error);
@@ -759,8 +761,8 @@ export default class EditorFile {
 
     if (/^s?ftp:/.test(this.uri)) return fs.localName;
 
-    const { uri } = await fs.stat();
-    return uri;
+    const { url } = await fs.stat();
+    return url;
   }
 
   /**
@@ -791,6 +793,8 @@ export default class EditorFile {
   }
 
   async #loadText() {
+    let value = '';
+
     const {
       cursorPos,
       scrollLeft,
@@ -799,7 +803,6 @@ export default class EditorFile {
       editable,
     } = this.#loadOptions;
     const { editor } = editorManager;
-    let value;
 
     this.#loadOptions = null;
 
@@ -811,22 +814,27 @@ export default class EditorFile {
 
     try {
       const cacheFs = fsOperation(this.cacheFile);
-      if (await cacheFs.exists()) {
+      const cacheExists = await cacheFs.exists();
+
+      if (cacheExists) {
         value = await cacheFs.readFile(this.encoding);
       }
 
       if (this.uri) {
         const file = fsOperation(this.uri);
-        if (!await file.exists()) {
+        const fileExists = await file.exists();
+        if (!fileExists && cacheExists) {
           this.deletedFile = true;
           this.isUnsaved = true;
-        } else if (value === undefined) {
+        } else if (fileExists) {
           value = await file.readFile(this.encoding);
+        } else {
+          throw new Error('Unable to load file');
         }
       }
 
       this.markChanged = false;
-      this.session.setValue(value || '');
+      this.session.setValue(value);
       this.loaded = true;
       this.loading = false;
 

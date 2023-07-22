@@ -8,15 +8,16 @@ export default {
   PREVIEW_PORT: 8158,
   VIBRATION_TIME: 30,
   VIBRATION_TIME_LONG: 150,
-  SCROLL_SPEED_FAST: 0.01,
+  SCROLL_SPEED_FAST_X2: 0.005,
   SCROLL_SPEED_NORMAL: 0.04,
+  SCROLL_SPEED_FAST: 0.01,
   SCROLL_SPEED_SLOW: 0.08,
   SIDEBAR_SLIDE_START_THRESHOLD_PX: 20,
   CUSTOM_THEME: 'body[theme="custom"]',
   FEEDBACK_EMAIL: 'acode@foxdebug.com',
   ERUDA_CDN: 'https://cdn.jsdelivr.net/npm/eruda',
-  PAID_VERSION: 'https://play.google.com/store/apps/details?id=com.foxdebug.acode',
+  get PLAY_STORE_URL() { return `https://play.google.com/store/apps/details?id=${BuildInfo.packageName}`; },
   API_BASE: 'https://acode.foxdebug.com/api',
-  // API_BASE: 'https://192.168.29.46:3001/api', // test api
+  // API_BASE: 'https://192.168.1.74:3001/api', // test api
   SKU_LIST: ["basic", "bronze", "silver", "gold", "platinum"]
 };

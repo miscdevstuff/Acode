@@ -6,49 +6,51 @@ import 'styles/page.scss';
 import 'styles/list.scss';
 import 'styles/overrideAceStyle.scss';
 
-import 'ace/modelist';
-import 'ace/mode-smali';
-import 'components/WebComponents';
 import 'lib/polyfill';
+import 'ace/supportedModes';
+import 'components/WebComponents';
 
-import mustache from 'mustache';
-import ajax from '@deadlyjack/ajax';
-import tile from 'components/tile';
-import Sidebar from 'components/sidebar';
-import contextmenu from 'components/contextmenu';
-import EditorManager from './editorManager';
-import actionStack from './actionStack';
-import helpers from 'utils/helpers';
-import settings from './settings';
-import intentHandler from 'handlers/intent';
-import openFolder, { addedFolder } from './openFolder';
-import quickToolsInit from 'handlers/quickToolsInit';
-import loadPolyFill from 'utils/polyfill';
 import Url from 'utils/Url';
-import applySettings from './applySettings';
+import lang from 'lib/lang';
+import Acode from 'lib/acode';
+import themes from 'lib/themes';
+import mustache from 'mustache';
+import startAd from 'lib/startAd';
+import tile from 'components/tile';
+import ajax from '@deadlyjack/ajax';
+import helpers from 'utils/helpers';
+import settings from 'lib/settings';
+import $_menu from 'views/menu.hbs';
+import plugins from 'pages/plugins';
 import fsOperation from 'fileSystem';
 import toast from 'components/toast';
-import $_menu from 'views/menu.hbs';
-import $_fileMenu from 'views/file-menu.hbs';
-import restoreFiles from './restoreFiles';
-import loadPlugins from './loadPlugins';
-import checkPluginsUpdate from './checkPluginsUpdate';
-import plugins from 'pages/plugins';
-import Acode from './acode';
-import lang from './lang';
-import EditorFile from './editorFile';
 import sidebarApps from 'sidebarApps';
-import checkFiles from './checkFiles';
-import themes from './themes';
-import { initFileList } from './fileList';
-import { getEncoding, initEncodings } from 'utils/encodings';
-import { resetKeyBindings, setKeyBindings } from 'ace/commands';
-import QuickTools from 'pages/quickTools/quickTools';
-import otherSettings from 'settings/appSettings';
+import EditorFile from 'lib/editorFile';
+import openFolder from 'lib/openFolder';
+import checkFiles from 'lib/checkFiles';
+import Sidebar from 'components/sidebar';
+import actionStack from 'lib/actionStack';
+import loadPolyFill from 'utils/polyfill';
+import loadPlugins from 'lib/loadPlugins';
 import tutorial from 'components/tutorial';
-import openFile from './openFile';
-import startAd from './startAd';
-import keyboardHandler, { keydownState } from '../handlers/keyboard';
+import intentHandler from 'handlers/intent';
+import restoreFiles from 'lib/restoreFiles';
+import $_fileMenu from 'views/file-menu.hbs';
+import EditorManager from 'lib/editorManager';
+import applySettings from 'lib/applySettings';
+import keyboardHandler from 'handlers/keyboard';
+import contextmenu from 'components/contextmenu';
+import otherSettings from 'settings/appSettings';
+import windowResize from 'handlers/windowResize';
+import quickToolsInit from 'handlers/quickToolsInit';
+import checkPluginsUpdate from 'lib/checkPluginsUpdate';
+
+import { initModes } from 'ace/modelist';
+import { initFileList } from 'lib/fileList';
+import { addedFolder } from 'lib/openFolder';
+import { keydownState } from 'handlers/keyboard';
+import { getEncoding, initEncodings } from 'utils/encodings';
+import { setKeyBindings } from 'ace/commands';
 
 const previousVersionCode = parseInt(localStorage.versionCode, 10);
 
@@ -69,7 +71,7 @@ async function Main() {
     }
   };
 
-  window.addEventListener('resize', resizeHandler);
+  window.addEventListener('resize', windowResize);
   document.addEventListener('pause', pauseHandler);
   document.addEventListener('resume', resumeHandler);
   document.addEventListener('keydown', keyboardHandler);
@@ -265,7 +267,7 @@ async function loadApp() {
   //#endregion
 
   //#region Add event listeners
-  initFileList();
+  initModes();
   quickToolsInit();
   sidebarApps.init($sidebar);
   await sidebarApps.loadApps();
@@ -309,7 +311,7 @@ async function loadApp() {
           plugins(updates);
           $icon.remove();
         }
-      } attr-action='' style={{ fontSize: '1.2rem' }} className='octicon octicon-bell'></span>;
+      } attr-action='' style={{ fontSize: '1.2rem' }} className='icon notifications'></span>;
 
       if ($editMenuToggler.isConnected) {
         $header.insertBefore($icon, $editMenuToggler);
@@ -334,17 +336,17 @@ async function loadApp() {
   }
 
   if (Array.isArray(files) && files.length) {
-    restoreFiles(files)
-      .then(() => {
-        onEditorUpdate(undefined, false);
-      })
-      .catch((error) => {
-        console.error(error);
-        toast('File loading failed!');
-      });
+    try {
+      await restoreFiles(files);
+    } catch (error) {
+      console.error(error);
+      toast('File loading failed!');
+    }
   } else {
     onEditorUpdate(undefined, false);
   }
+
+  initFileList();
 
   /**
    *
@@ -488,83 +490,27 @@ function showTutorials() {
       </p>;
     });
   }
-
-  if (previousVersionCode) {
-    tutorial('main-tutorials', (hide) => {
-      const onclick = () => {
-        QuickTools();
-        hide();
-      };
-
-      return <p>
-        Command palette icon has been removed from shortcuts, but you can modify shortcuts.
-        <span className='link' onclick={onclick}>Click here</span> to configure quick tools.
-      </p>;
-    });
-  }
-
-  if (previousVersionCode < 284) {
-    tutorial('keybinding-tutorials', (hide) => {
-      const reset = () => {
-        resetKeyBindings();
-        hide();
-      };
-
-      const edit = () => {
-        openFile(KEYBINDING_FILE);
-        hide();
-      };
-
-      return <p>
-        Keybinding file is misconfigured. Please <span className='link' onclick={edit}>edit</span> or <span className='link' onclick={reset}>reset</span> it.
-        There was a typo in keybinding file. Search 'pallete' and replace it with 'palette'.
-      </p>;
-    });
-  }
-}
-
-/**
- * Hide banner ad when focused element is blurred
- * @this {HTMLElement}
- */
-function activeElementOnBlur() {
-  const active = !!window.ad?.active;
-  if (active) {
-    window.ad.show();
-  }
-
-  this.removeEventListener('blur', activeElementOnBlur);
 }
 
 function backButtonHandler() {
+  if (keydownState.esc) {
+    keydownState.esc = false;
+    return;
+  }
   actionStack.pop();
 }
 
 function menuButtonHandler() {
-  acode.exec('toggle-sidebar');
+  const { acode } = window;
+  acode?.exec('toggle-sidebar');
 }
 
 function pauseHandler() {
-  acode.exec('save-state');
+  const { acode } = window;
+  acode?.exec('save-state');
 }
 
 function resumeHandler() {
   if (!settings.value.checkFiles) return;
   checkFiles();
-}
-
-function resizeHandler() {
-  const bannerIsActive = !!window.ad?.active;
-  const $activeElement = document.activeElement;
-  const isEditable = $activeElement instanceof HTMLInputElement
-    || $activeElement instanceof HTMLTextAreaElement
-    || $activeElement?.isContentEditable;
-
-  if (isEditable && bannerIsActive) {
-    window.ad?.hide();
-  } else if (bannerIsActive) {
-    window.ad?.show();
-  }
-
-  $activeElement.addEventListener('blur', activeElementOnBlur);
 }

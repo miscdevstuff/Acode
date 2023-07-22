@@ -18,11 +18,12 @@ const events = {
   'refresh': [],
 };
 
-let dirCount = 0;
-let fileCount = 0;
-
 export function initFileList() {
-  editorManager.on('add-folder', onAddFolder);
+  if (editorManager?.activeFile.loading) {
+    editorManager.activeFile.on('loadend', initFileList);
+    return;
+  }
+  // editorManager.on('add-folder', onAddFolder);
   editorManager.on('remove-folder', onRemoveFolder);
   settings.on('update:excludeFolders:after', refresh);
 }
@@ -65,8 +66,6 @@ export function remove(item) {
  * Refresh file list
  */
 export async function refresh() {
-  dirCount = 0;
-  fileCount = 0;
   Object.keys(filesTree).forEach((key) => {
     delete filesTree[key];
   });
@@ -209,8 +208,14 @@ function flattenTree(tree, transform, listedDirs) {
  * Called when a folder is added
  * @param {{url: string, name: string}} folder - Folder path
  */
-async function onAddFolder({ url, name }) {
+export async function addRoot({ url, name }) {
   try {
+
+    const TERMUX_STORAGE = "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/storage";
+    const TERMUX_SHARED = "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/storage/shared";
+    if (url === TERMUX_STORAGE) return;
+    if (url === TERMUX_SHARED) return;
+
     const tree = await Tree.createRoot(url, name);
     filesTree[url] = tree;
     getAllFiles(tree);
@@ -229,94 +234,43 @@ function onRemoveFolder({ url }) {
   const tree = filesTree[url];
   if (!tree) return;
   delete filesTree[url];
-  const [i, j] = countEntries(tree);
-  dirCount -= i;
-  fileCount -= j;
   emit('remove-folder', tree);
-}
-
-/**
- * Called when a directory is added
- */
-function incDirCount() {
-  const { maxDirCount } = settings.value;
-
-  dirCount++;
-
-  if (dirCount > maxDirCount) {
-    const message = strings['too many folders'].replace('{count}', maxDirCount);
-    toast(message);
-  }
-}
-
-/**
- * Called when a file is added
-*/
-function incFileCount() {
-  const { maxFilesCount } = settings.value;
-
-  fileCount++;
-
-  if (fileCount > maxFilesCount) {
-    const message = strings['too many files'].replace('{count}', maxFilesCount);
-    toast(message);
-  }
 }
 
 /**
  * Get all file recursively
  * @param {Tree} parent - An array to store files
- * @param {string} [root] - Root path
+ * @param {Tree} [root] - Root path
  */
-async function getAllFiles(parent, depth = 0) {
-  if (!parent.children) return;
-  if (skip()) return;
-  if (depth > settings.value.maxDirDepth) return;
+async function getAllFiles(parent, root) {
+  root = root || parent.root;
+  if (!parent.children || !root.isConnected) return;
 
-  incDirCount();
+  try {
+    const entries = await fsOperation(parent.url).lsDir();
+    const promises = [];
 
-  const ls = await fsOperation(parent.url).lsDir();
-  await Promise.all(ls.map(async (item) => {
-    if (skip()) return;
-
-    const { name, url, isDirectory } = item;
-    const exists = parent.children.findIndex(({ value }) => value === url);
-    if (exists > -1) {
-      return;
+    for (let i = 0; i < entries.length; i++) {
+      const item = entries[i];
+      promises.push(createChildTree(parent, item, root));
     }
 
-    const file = await Tree.create(url, name, isDirectory);
-
-    if (skip()) return;
-
-    const existingTree = getTree(Object.values(filesTree), file.url);
-
-    if (existingTree) {
-      file.children = existingTree.children;
-      parent.children.push(file);
-      return;
+    await Promise.all(promises);
+  } catch (error) {
+    // retry after 3s
+    parent.retriedCount += 1;
+    if (parent.retriedCount > settings.value.maxRetryCount) return;
+    if (settings.value.showRetryToast) {
+      toast(`retrying: ${parent.path}`);
     }
 
-    parent.children.push(file);
-    if (isDirectory) {
-      const ignore = !!settings.value.excludeFolders.find(
-        (folder) => minimatch(Url.join(file.path, ''), folder, { matchBase: true }),
-      );
-      if (ignore) return;
-
-      getAllFiles(file, depth + 1);
-      return;
-    }
-
-    incFileCount();
-    emit('push-file', file);
-  }));
-}
-
-function skip() {
-  if (fileCount > settings.value.maxFilesCount) return true;
-  if (dirCount > settings.value.maxDirCount) return true;
-  return false;
+    setTimeout(() => {
+      // why not outside? because parent may be removed
+      if (!root.isConnected) return;
+      parent.children.length = 0;
+      getAllFiles(parent);
+    }, 3000);
+  }
 }
 
 /**
@@ -331,20 +285,42 @@ function emit(event, ...args) {
 }
 
 /**
- * Count number of directories
- * @param {Tree} tree
- * @returns {[number, number]} [directories, files]
+ * Create a child tree
+ * @param {Tree} parent 
+ * @param {File} item 
+ * @param {Tree} root
  */
-function countEntries(tree, dirs = 0, files = 0) {
-  if (!tree.children) return [dirs, files];
-  dirs += tree.children.filter(({ children }) => children).length;
-  files += tree.children.length - dirs;
-  tree.children.forEach((item) => {
-    const [i, j] = countEntries(item);
-    dirs += i;
-    files += j;
-  });
-  return [dirs, files];
+async function createChildTree(parent, item, root) {
+  if (!root.isConnected) return;
+  const { name, url, isDirectory } = item;
+  const exists = parent.children.findIndex(({ value }) => value === url);
+  if (exists > -1) {
+    return;
+  }
+
+  const file = await Tree.create(url, name, isDirectory);
+  if (!root.isConnected) return;
+
+  const existingTree = getTree(Object.values(filesTree), file.url);
+
+  if (existingTree) {
+    file.children = existingTree.children;
+    parent.children.push(file);
+    return;
+  }
+
+  parent.children.push(file);
+  if (isDirectory) {
+    const ignore = !!settings.value.excludeFolders.find(
+      (folder) => minimatch(Url.join(file.path, ''), folder, { matchBase: true }),
+    );
+    if (ignore) return;
+
+    getAllFiles(file, root);
+    return;
+  }
+
+  emit('push-file', file);
 }
 
 export class Tree {
@@ -358,6 +334,8 @@ export class Tree {
   #children;
   /**@type {Tree}*/
   #parent;
+
+  retriedCount = 0;
 
   /**
    * Create a tree using constructor
@@ -454,6 +432,27 @@ export class Tree {
   }
 
   /**
+   * Check if the root of the tree is added to the open folder list.
+   * @returns {boolean}
+   */
+  get isConnected() {
+    const root = this.root;
+    return !!addedFolder.find(({ url }) => url === root.url);
+  }
+
+  /**
+   * Get the root of the tree
+   * @returns {Tree}
+   */
+  get root() {
+    let root = this;
+    while (root.parent) {
+      root = root.parent;
+    }
+    return root;
+  }
+
+  /**
    * Update tree name and url
    * @param {string} url 
    * @param {string} [name] 
@@ -463,14 +462,6 @@ export class Tree {
     this.#url = url;
     this.#name = name;
     this.#path = Url.join(this.#parent.path, name);
-    if (Array.isArray(this.#children)) {
-      const [dirs, files] = countEntries(this.#children);
-      console.log('before', dirs, files);
-      dirCount -= dirs;
-      fileCount -= files;
-      this.#children.length = 0;
-      console.log('after', dirs, files);
-    }
     getAllFiles(this);
   }
 
@@ -492,7 +483,7 @@ export class Tree {
       name: this.#name,
       url: this.#url,
       path: this.#path,
-      parent: this.#parent.url,
+      parent: this.#parent?.url,
       isDirectory: !!this.#children,
     };
   }

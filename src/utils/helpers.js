@@ -1,10 +1,11 @@
 import ajax from '@deadlyjack/ajax';
 import escapeStringRegexp from 'escape-string-regexp';
-import constants from 'lib/constants';
-import path from './Path';
+
 import Url from './Url';
 import Uri from './Uri';
+import path from './Path';
 import alert from 'dialogs/alert';
+import constants from 'lib/constants';
 
 /**
  * Gets programming language name according to filename
@@ -24,10 +25,10 @@ function getFileType(filename) {
     cppheader: /\.(hh|hpp)$/i,
     jsconfig: /^jsconfig.json$/i,
     tsconfig: /^tsconfig.json$/i,
+    android: /\.(apk|aab|slim)$/i,
     jsbeautify: /^\.jsbeautifyrc$/i,
     webpack: /^webpack\.config\.js$/i,
     audio: /\.(mp3|wav|ogg|flac|aac)$/i,
-    android: /\.(apk|aab|slim|smali)$/i,
     git: /(^\.gitignore$)|(^\.gitmodules$)/i,
     video: /\.(mp4|m4a|mov|3gp|wmv|flv|avi)$/i,
     image: /\.(png|jpg|jpeg|gif|bmp|ico|webp)$/i,
@@ -180,18 +181,6 @@ export default {
     const msg = this.errorMessage(err, ...args);
     alert(strings.error, msg, onhide);
     return promise;
-  },
-  /**
-   * Checks if the value is a valid color
-   * @param {string} value 
-   * @returns 
-   */
-  isValidColor(value) {
-    return (
-      /#[0-9a-f]{3,8}/.test(value) ||
-      /rgba?\(\d{1,3},\s?\d{1,3},\s?\d{1,3}(,\s?[0-1])?\)/.test(value) ||
-      /hsla?\(\d{1,3},\s?\d{1,3}%,\s?\d{1,3}%(,\s?[0-1])?\)/.test(value)
-    );
   },
   /**
    * Returns unique ID
@@ -367,5 +356,17 @@ export default {
       clearTimeout(timeout);
       timeout = setTimeout(later, wait);
     };
+  },
+  defineDeprecatedProperty(obj, name, getter, setter) {
+    Object.defineProperty(obj, name, {
+      get: function () {
+        console.warn(`Property '${name}' is deprecated.`);
+        return getter.call(this);
+      },
+      set: function (value) {
+        console.warn(`Property '${name}' is deprecated.`);
+        setter.call(this, value);
+      }
+    });
   }
-};
+};;;

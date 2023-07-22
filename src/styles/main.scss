@@ -191,7 +191,6 @@ a.icon {
   }
 }
 
-.octicon,
 .icon {
   user-select: none;
   display: flex;
@@ -275,7 +274,9 @@ a.icon {
   }
 
   &.no-icon {
-    max-width: 10px;
+    max-width: 5px;
+    margin-right: 5px;
+    border-radius: 0;
   }
 
   &.letters::before {
@@ -522,7 +523,6 @@ textarea {
     align-items: center;
     justify-content: center;
     height: 100%;
-    padding: 0 5px;
     font-size: 0.9em;
     min-width: 50px;
     color: inherit;

@@ -33,6 +33,7 @@ import prompt from 'dialogs/prompt';
  * @property {string} id
  * @property {string} url
  * @property {string} title
+ * @property {boolean} listFiles Weather to list all files recursively
  * @property {boolean} saveState
  * @property {Collapsible} $node
  * @property {ClipBoard} clipBoard
@@ -61,6 +62,7 @@ function openFolder(_path, opts = {}) {
   const saveState = opts.saveState ?? true;
   const listState = opts.listState || {};
   const title = opts.name;
+  let listFiles = false;
 
   if (!title) {
     throw new Error('Folder name is required');
@@ -95,9 +97,10 @@ function openFolder(_path, opts = {}) {
     name: title,
   };
 
-  addedFolder.push({
+  const folder = {
     title,
     remove,
+    listFiles,
     saveState,
     listState,
     url: _path,
@@ -108,11 +111,27 @@ function openFolder(_path, opts = {}) {
       $root.collapse();
       $root.expand();
     },
-  });
+  };
+  addedFolder.push(folder);
 
   editorManager.emit('update', 'add-folder');
   editorManager.onupdate('add-folder', event);
   editorManager.emit('add-folder', event);
+
+  (async () => {
+    const protocol = Url.getProtocol(_path).slice(0, -1);
+    const type = /^(content|file)$/.test(protocol) ? '' : ` (${protocol})`;
+    const message = strings['list files'].replace(
+      '{name}',
+      `${title}${type}`
+    );
+    listFiles = await confirm(strings.confirm, message, true);
+    if (listFiles) {
+      FileList.addRoot({ url: _path, name: title });
+    }
+
+    folder.listFiles = listFiles;
+  })();
 
   if (listState[_path]) {
     $root.expand();
@@ -135,7 +154,7 @@ function openFolder(_path, opts = {}) {
     editorManager.onupdate('remove-folder', event);
     editorManager.emit('remove-folder', event);
   }
-}
+};
 
 /**
  * Expand the list
@@ -176,7 +195,7 @@ async function expandList($list) {
       }
     });
   } catch (err) {
-    this.collapse();
+    $list.collapse();
     helpers.error(err);
   } finally {
     stopLoading();
@@ -352,8 +371,8 @@ function execOperation(type, action, url, $target, name) {
       editorManager.emit('update', 'delete-folder');
     }
 
-    FileList.remove(url);
     toast(strings.success);
+    FileList.remove(url);
   }
 
   async function renameFile() {
@@ -441,11 +460,13 @@ function execOperation(type, action, url, $target, name) {
     CASE += srcCollapsed ? 1 : 0;
     CASE += $target.collapsed ? 1 : 0;
 
+    startLoading();
     const fs = fsOperation(clipBoard.url);
     let newUrl;
     if (clipBoard.action === 'cut') newUrl = await fs.moveTo(url);
     else newUrl = await fs.copyTo(url);
     const { name: newName } = await fsOperation(newUrl).stat();
+    stopLoading();
     /**
      * CASES:
      * CASE 111: src is file and parent is collapsed where target is also collapsed

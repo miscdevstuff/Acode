@@ -32,18 +32,20 @@ import './style.scss';
 */
 export default function inputhints($input, hints, onSelect) {
   /**@type {HTMLUListElement} */
-  let $ul = <Ul />;
+  const $ul = <Ul />;
+  const LIMIT = 100;
+
   let preventUpdate = false;
+  let updateUlTimeout;
+  let pages = 0;
+  let currentHints = [];
 
   $input.addEventListener('focus', onfocus);
 
   if (typeof hints === 'function') {
     const cb = hints;
     hints = [];
-    updateUl(<Ul hints={[{
-      text: strings['loading...'],
-      value: '',
-    }]} />);
+    $ul.content = [<Hint hint={{ value: '', text: strings['loading...'] }} />];
     cb(setHints, hintModification());
   } else {
     setHints(hints);
@@ -66,9 +68,6 @@ export default function inputhints($input, hints, onSelect) {
    * @param {MouseEvent} e Event
    */
   function handleClick(e) {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    e.stopPropagation();
     const $el = e.target;
     const action = $el.getAttribute('action');
     if (action !== 'hint') return;
@@ -76,11 +75,8 @@ export default function inputhints($input, hints, onSelect) {
     if (!value) return;
     $input.value = $el.textContent;
     if (onSelect) onSelect(value);
-    else $input.dataset.value = value;
-    const activeHint = $ul.get('.active');
-    if (!activeHint) return;
-    activeHint.classList.remove('active');
-    $el.classList.add('active');
+    preventUpdate = false;
+    onblur();
   }
 
   /**
@@ -88,15 +84,15 @@ export default function inputhints($input, hints, onSelect) {
    * @param {KeyboardEvent} e Event
    */
   function handleKeypress(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      e.stopPropagation();
-      const activeHint = $ul.get('.active');
-      if (!activeHint) return;
-      const value = activeHint.getAttribute('value');
-      if (onSelect) onSelect(value);
-      else $input.value = value;
-    }
+    if (e.key !== 'Enter') return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    const activeHint = $ul.get('.active');
+    if (!activeHint) return;
+    const value = activeHint.getAttribute('value');
+    if (onSelect) onSelect(value);
+    else $input.value = value;
   }
 
   /**
@@ -109,14 +105,14 @@ export default function inputhints($input, hints, onSelect) {
       e.preventDefault();
       e.stopPropagation();
     }
-    moveDown(code);
+    updateHintFocus(code);
   }
 
   /**
    * Moves the active hint up or down
    * @param {"ArrowDown" | "ArrowUp"} key Direction to move
    */
-  function moveDown(key) {
+  function updateHintFocus(key) {
     let nextHint;
     let activeHint = $ul.get('.active');
     if (!activeHint) activeHint = $ul.firstChild;
@@ -152,7 +148,7 @@ export default function inputhints($input, hints, onSelect) {
         matched.push(hint);
       }
     });
-    updateUl(<Ul hints={matched} />);
+    updateUl(matched);
   }
 
   function onfocus() {
@@ -168,15 +164,21 @@ export default function inputhints($input, hints, onSelect) {
     position();
   }
 
+  /**
+   * Event listener for blur
+   * @returns 
+   */
   function onblur() {
     if (preventUpdate) return;
 
-    removeUl();
+    clearTimeout(updateUlTimeout);
     $input.removeEventListener('keypress', handleKeypress);
     $input.removeEventListener('keydown', handleKeydown);
     $input.removeEventListener('blur', onblur);
     $input.removeEventListener('input', oninput);
     window.removeEventListener('resize', position);
+    ulRemoveEventListeners();
+    $ul.remove();
   }
 
   /**
@@ -218,7 +220,7 @@ export default function inputhints($input, hints, onSelect) {
     } else {
       hints = [];
     }
-    updateUl(<Ul hints={hints} />);
+    updateUl(hints);
     $ul.classList.remove('loading');
   }
 
@@ -248,52 +250,102 @@ export default function inputhints($input, hints, onSelect) {
     };
   }
 
-  function removeUl($el = $ul) {
-    ulRemoveEventListeners($el);
-    $el.remove();
-    $el = null;
+  function ulAddEventListeners() {
+    window.addEventListener('resize', position);
+    $ul.addEventListener('click', handleClick);
+    $ul.addEventListener('mousedown', handleMouseDown);
+    $ul.addEventListener('mouseup', handleMouseUp);
+    $ul.addEventListener('touchstart', handleMouseDown);
+    $ul.addEventListener('touchend', handleMouseUp);
+    $ul.addEventListener('scroll', updatePage);
   }
 
-  function ulAddEventListeners($el = $ul) {
-    $el.addEventListener('click', handleClick);
-    $el.addEventListener('mousedown', handleMouseDown);
-    $el.addEventListener('mouseup', handleMouseUp);
-    $el.addEventListener('touchstart', handleMouseDown);
-    $el.addEventListener('touchend', handleMouseUp);
+  function ulRemoveEventListeners() {
+    window.removeEventListener('resize', position);
+    $ul.removeEventListener('click', handleClick);
+    $ul.removeEventListener('mousedown', handleMouseDown);
+    $ul.removeEventListener('mouseup', handleMouseUp);
+    $ul.removeEventListener('touchstart', handleMouseDown);
+    $ul.removeEventListener('touchend', handleMouseUp);
+    $ul.removeEventListener('scroll', updatePage);
   }
 
-  function ulRemoveEventListeners($el = $ul) {
-    $el.removeEventListener('click', handleClick);
-    $el.removeEventListener('mousedown', handleMouseDown);
-    $el.removeEventListener('mouseup', handleMouseUp);
-    $el.removeEventListener('touchstart', handleMouseDown);
-    $el.removeEventListener('touchend', handleMouseUp);
+  function updatePage() {
+    // if the scroll is at the bottom
+    if ($ul.scrollTop + $ul.clientHeight >= $ul.scrollHeight) {
+      pages++;
+      updateUlNow(currentHints, pages);
+    }
   }
 
-  function updateUl($newUl) {
-    let $oldUl = $ul;
-    $ul = $newUl;
+  /**
+   * First time updates the hint instantly, then debounce
+   * @param {Array<HintObj>} hints 
+   */
+  function updateUl(hints) {
+    updateUlNow(hints);
+    updateUl = updateUlDebounce;
+  }
 
-    removeUl($oldUl);
-    $oldUl = null;
-    $input.blur();
-    $input.focus();
+  /**
+   * Update the hint list after a delay
+   * @param {Array<HintObj>} hints 
+   */
+  function updateUlDebounce(hints) {
+    clearTimeout(updateUlTimeout);
+    updateUlTimeout = setTimeout(updateUlNow, 300, hints);
+  }
+
+  /**
+   * Update the hint list instantly
+   * @param {Array<HintObj>} hints 
+   * @param {number} page
+   */
+  function updateUlNow(hints, page = 0) {
+    // render only first 500 hints
+    currentHints = hints;
+    const offset = page * LIMIT;
+    const end = offset + LIMIT;
+    const list = hints.slice(offset, end);
+    let scrollTop = $ul.scrollTop;
+    if (!list.length) return;
+
+    $ul.remove();
+    if (!page) {
+      scrollTop = 0;
+      $ul.content = list.map((hint) => <Hint hint={hint} />);
+    } else {
+      $ul.append(...list.map((hint) => <Hint hint={hint} />));
+    }
+    app.append($ul);
+    $ul.scrollTop = scrollTop;
+    position(); // Update the position of the new list
   }
 
   return {
-    getSelected: () => $ul.get('.active'),
-    container: $ul,
+    getSelected() { $ul.get('.active'); },
+    get container() { return $ul; },
   };
 }
 
 /**
  * Create a hint item
  * @param {object} param0 Hint item
- * @param {string} param0.value Hint value
- * @param {string} param0.text Hint text
+ * @param {HintObj} param0.hint Hint item
  * @returns {HTMLLIElement}
  */
-function Hint({ value, text }) {
+function Hint({ hint }) {
+  let value = '';
+  let text = '';
+
+  if (typeof hint === 'string') {
+    value = hint;
+    text = hint;
+  } else {
+    value = hint.value;
+    text = hint.text;
+  }
+
   return <li attr-action='hint' attr-value={value} innerHTML={text}></li>;
 }
 
@@ -305,11 +357,6 @@ function Hint({ value, text }) {
  */
 function Ul({ hints = [] }) {
   return <ul id='hints' className='scroll'>
-    {hints.map((hint) => {
-      if (typeof hint === 'string') {
-        return <Hint value={hint} text={hint} />;
-      }
-      return <Hint {...hint} />;
-    })}
+    {hints.map((hint) => <Hint hint={hint} />)}
   </ul>;
 }

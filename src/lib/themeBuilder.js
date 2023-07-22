@@ -1,4 +1,4 @@
-import Irid from 'irid';
+import Color from 'utils/color';
 
 export default class ThemeBuilder {
   #theme = {
@@ -41,7 +41,7 @@ export default class ThemeBuilder {
    * @param {'dark'|'light'} [type] type of the theme 
    * @param {'free'|'paid'} [version]  version of the theme
    */
-  constructor(name = '', type = 'dark', version = 'paid') {
+  constructor(name = '', type = 'dark', version = 'free') {
     this.name = name;
     this.type = type;
     this.version = version;
@@ -129,7 +129,7 @@ export default class ThemeBuilder {
 
   set primaryColor(value) {
     if (this.autoDarkened) {
-      this.darkenedPrimaryColor = Irid(value).darken(0.4).toHexString();
+      this.darkenedPrimaryColor = Color(value).darken(0.4).hex.toString();
     }
     this.#theme['--primary-color'] = value;
   }
@@ -258,8 +258,7 @@ export default class ThemeBuilder {
    * This method is used to set a darkened primary color.
    */
   darkenPrimaryColor() {
-    const hex = Irid(this.primaryColor).toHexString();
-    this.darkenedPrimaryColor = Irid(hex).darken(0.4).toHexString();
+    this.darkenedPrimaryColor = Color(this.primaryColor).darken(0.4).hex.toString();
   }
 
   /**
@@ -314,7 +313,7 @@ export default class ThemeBuilder {
   }
 }
 
-export function createBuiltInTHeme(name, type, version = 'paid') {
+export function createBuiltInTheme(name, type, version = 'paid') {
   const theme = new ThemeBuilder(name, type, version);
   theme.autoDarkened = false;
   return theme;

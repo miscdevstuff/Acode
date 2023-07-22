@@ -328,6 +328,7 @@
   "close all": "Tutup semua",
   "unsaved files warning": "Beberapa berkas belum disimpan. Klik 'Oke' untuk melanjutkan atau 'Batal' untuk kembali.",
   "save all warning": "Yakin ingin menyimpan semua berkas dan menutupnya? Tindakan ini tidak dapat dibatalkan.",
+  "save all changes warning": "Are you sure you want to save all files?",
   "close all warning": "Apakah Anda yakin ingin menutup semua berkas? Anda akan kehilangan perubahan yang belum disimpan dan tindakan ini tidak dapat dibatalkan.",
   "refresh": "Segarkan",
   "shortcut buttons": "Tombol pintasan",
@@ -366,12 +367,14 @@
   "info-excludefolders": "Gunakan pola **/node_modules/** untuk mengabaikan semua berkas dari folder node_modules. Ini akan mengecualikan berkas dari daftar dan juga akan mencegahnya disertakan dalam pencarian berkas.",
   "missed files": "Memindai {count} berkas setelah pencarian dimulai dan tidak akan disertakan dalam pencarian.",
   "remove": "Hapus",
-  "too many files": "Terlalu banyak berkas. Hanya {count} yang akan dihitung.",
-  "too many folders": "Terlalu banyak folder. Hanya {count} yang akan dihitung.",
   "quicktools:command-palette": "Command palette",
   "default file encoding": "Default file encoding",
   "remove entry": "Are you sure you want to remove '{name}' from the saved paths? Please note that removing it will not delete the path itself.",
   "delete entry": "Confirm deletion: '{name}'. This action cannot be undone. Proceed?",
   "change encoding": "Reopen '{file}' with '{encoding}' encoding? This action will result in the loss of any unsaved changes made to the file. Do you want to proceed with reopening?",
-  "reopen file": "Are you sure you want to reopen '{file}'? Any unsaved changes will be lost."
+  "reopen file": "Are you sure you want to reopen '{file}'? Any unsaved changes will be lost.",
+  "plugin min version": "{name} only available in Acode - {v-code} and above. Click here to update.",
+  "color preview": "Color preview",
+  "confirm": "Confirm",
+  "list files": "Do you want to list all files in <strong>{name}</strong>?<br><br><strong>FTP/SFTP</strong> folders may not work properly if it has too many files."
 }
