@@ -169,7 +169,7 @@ export default function actions(action, value) {
       return true;
 
     case 'search-settings':
-      searchSettings();
+      searchSettings().show();
       return true;
 
     case 'search-replace':
