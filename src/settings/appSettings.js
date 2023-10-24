@@ -147,6 +147,11 @@ export default function otherSettings() {
       index: 0,
     },
     {
+      key: 'showSideButtons',
+      text: strings['show side buttons'],
+      checkbox: values.showSideButtons,
+    },
+    {
       key: 'excludeFolders',
       text: strings['exclude files'],
       value: values.excludeFolders.join('\n'),
@@ -196,7 +201,7 @@ export default function otherSettings() {
         }
 
         const fs = fsOperation(Url.join(DATA_STORAGE, 'eruda.js'));
-        if (!await fs.exists()) {
+        if (await fs.exists()) {
           break;
         }
 

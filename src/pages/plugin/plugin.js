@@ -14,7 +14,21 @@ import loader from 'dialogs/loader';
 import actionStack from 'lib/actionStack';
 import settings from 'lib/settings';
 
-export default async function PluginInclude(id, installed, onInstall, onUninstall) {
+let $lastPluginPage;
+
+/**
+ * Plugin page
+ * @param {string} id 
+ * @param {boolean} installed 
+ * @param {() => void} [onInstall] 
+ * @param {() => void} [onUninstall] 
+ * @param {boolean} [installOnRender] 
+ */
+export default async function PluginInclude(id, installed, onInstall, onUninstall, installOnRender) {
+  if ($lastPluginPage) {
+    $lastPluginPage.hide();
+  }
+
   installed = typeof installed !== 'boolean' ? installed === 'true' : installed;
   const $page = Page(strings['plugin']);
   let plugin = {};
@@ -39,8 +53,10 @@ export default async function PluginInclude(id, installed, onInstall, onUninstal
     actionStack.remove('plugin');
     loader.removeTitleLoader();
     cancelled = true;
+    $lastPluginPage = null;
   };
 
+  $lastPluginPage = $page;
   app.append($page);
   helpers.showAd();
 
@@ -65,6 +81,8 @@ export default async function PluginInclude(id, installed, onInstall, onUninstal
       };
 
       isPaid = installedPlugin.price > 0;
+      $page.settitle(plugin.name);
+      render();
     }
 
     await (async () => {
@@ -112,6 +130,11 @@ export default async function PluginInclude(id, installed, onInstall, onUninstal
 
     $page.settitle(plugin.name);
     render();
+
+    if (installOnRender && !installed) {
+      const $button = $page.get('[data-type="install"], [data-type="buy"]');
+      $button?.click();
+    }
 
   } catch (err) {
     helpers.error(err);

@@ -1,6 +1,6 @@
 import list from 'components/collapsableList';
 import ScrollBar from 'components/scrollbar';
-import touchListeners, { scrollAnimationFrame } from 'ace/touchHandler';
+import touchListeners from 'ace/touchHandler';
 import appSettings from './settings';
 import EditorFile from './editorFile';
 import sidebarApps from 'sidebarApps';
@@ -9,8 +9,10 @@ import keyboardHandler from 'handlers/keyboard';
 import initColorView from 'ace/colorView';
 import { keydownState } from 'handlers/keyboard';
 import { deactivateColorView } from 'ace/colorView';
+import { scrollAnimationFrame } from 'ace/touchHandler';
 import { setCommands, setKeyBindings } from 'ace/commands';
 import { HARDKEYBOARDHIDDEN_NO, getSystemConfiguration } from './systemConfiguration';
+import SideButton, { sideButtonContainer } from 'components/sideButton';
 
 //TODO: Add option to work multiple files at same time in large display.
 
@@ -53,6 +55,15 @@ async function EditorManager($header, $body) {
     }
   };
   const $container = <div className='editor-container'></div>;
+  const problemButton = SideButton({
+    text: strings.problems,
+    icon: "warningreport_problem",
+    backgroundColor: 'var(--danger-color)',
+    textColor: 'var(--danger-text-color)',
+    onclick() {
+      acode.exec('open', 'problems');
+    },
+  });
   const editor = ace.edit($container);
   const $vScrollbar = ScrollBar({
     width: scrollbarSize,
@@ -122,19 +133,14 @@ async function EditorManager($header, $body) {
 
   // set mode text
   editor.setSession(ace.createEditSession('', 'ace/mode/text'));
-  $body.appendChild($container);
+  $body.append($container);
   await setupEditor();
 
   $hScrollbar.onshow = $vScrollbar.onshow = updateFloatingButton.bind({}, false);
   $hScrollbar.onhide = $vScrollbar.onhide = updateFloatingButton.bind({}, true);
 
   appSettings.on('update:textWrap', function (value) {
-    if (!value) {
-      editor.renderer.setScrollMargin(0, 0, 0, appSettings.value.leftMargin);
-    } else {
-      editor.renderer.setScrollMargin(0, 0, 0, 0);
-    }
-
+    updateMargin();
     for (let file of manager.files) {
       file.session.setUseWrapMode(value);
       if (!value) file.session.on('changeScrollLeft', onscrollleft);
@@ -177,12 +183,7 @@ async function EditorManager($header, $body) {
   });
 
   appSettings.on('update:linenumbers', function (value) {
-    editor.setOptions({
-      showGutter: value,
-      showLineNumbers: value,
-    });
-    if (value) editor.renderer.setMargin(0, 0, -16, 0);
-    else editor.renderer.setMargin(0, 0, 0, 0);
+    updateMargin(true);
     editor.resize(true);
   });
 
@@ -218,6 +219,15 @@ async function EditorManager($header, $body) {
     deactivateColorView();
   });
 
+  appSettings.on('update:showSideButtons', function () {
+    updateMargin();
+    updateSideButtonContainer();
+  });
+
+  appSettings.on('update:showAnnotations', function () {
+    updateMargin(true);
+  });
+
   return manager;
 
   /**
@@ -232,13 +242,24 @@ async function EditorManager($header, $body) {
   }
 
   async function setupEditor() {
+    const Emmet = ace.require('ace/ext/emmet');
+    const textInput = editor.textInput.getElement();
+    const settings = appSettings.value;
+    const {
+      leftMargin,
+      textWrap,
+      colorPreview,
+      fontSize,
+      lineHeight,
+    } = appSettings.value;
+    const scrollMarginTop = 0;
+    const scrollMarginLeft = 0;
+    const scrollMarginRight = textWrap ? 0 : leftMargin;
+    const scrollMarginBottom = 0;
+
     let checkTimeout = null;
     let autosaveTimeout;
     let scrollTimeout;
-
-    const Emmet = ace.require('ace/ext/emmet');
-    const settings = appSettings.value;
-    const textInput = editor.textInput.getElement();
 
     editor.on('focus', async () => {
       const { activeFile } = manager;
@@ -278,6 +299,7 @@ async function EditorManager($header, $body) {
 
       checkTimeout = setTimeout(async () => {
         const { activeFile } = manager;
+
         if (activeFile.markChanged) {
           const changed = await activeFile.isChanged();
           activeFile.isUnsaved = changed;
@@ -296,6 +318,8 @@ async function EditorManager($header, $body) {
         activeFile.markChanged = true;
       }, TIMEOUT_VALUE);
     });
+
+    editor.on('changeAnnotation', toggleProblemButton);
 
     editor.on('scroll', () => {
       clearTimeout(scrollTimeout);
@@ -318,7 +342,7 @@ async function EditorManager($header, $body) {
       }
     });
 
-    if (settings.colorPreview) {
+    if (colorPreview) {
       initColorView(editor);
     }
 
@@ -326,15 +350,15 @@ async function EditorManager($header, $body) {
     setCommands(editor);
     await setKeyBindings(editor);
     Emmet.setCore(window.emmet);
-    editor.setFontSize(settings.fontSize);
+    editor.setFontSize(fontSize);
     editor.setHighlightSelectedWord(true);
-    editor.container.style.lineHeight = settings.lineHeight;
+    editor.container.style.lineHeight = lineHeight;
 
     ace.require('ace/ext/language_tools');
     editor.setOption('animatedScroll', false);
     editor.setOption('tooltipFollowsMouse', false);
     editor.setOption('theme', settings.editorTheme);
-    editor.setOption('showGutter', settings.linenumbers);
+    editor.setOption('showGutter', settings.linenumbers || settings.showAnnotations);
     editor.setOption('showLineNumbers', settings.linenumbers);
     editor.setOption('enableEmmet', true);
     editor.setOption('showInvisibles', settings.showSpaces);
@@ -352,13 +376,14 @@ async function EditorManager($header, $body) {
     editor.setOption('enableLiveAutocompletion', settings.liveAutoCompletion);
     // editor.setOption('enableInlineAutocompletion', settings.inlineAutoCompletion);
 
-    if (!appSettings.value.textWrap) {
-      editor.renderer.setScrollMargin(0, 0, 0, settings.leftMargin);
-    }
-
-    if (appSettings.value.linenumbers) {
-      editor.renderer.setMargin(0, 0, -16, 0);
-    }
+    updateMargin(true);
+    updateSideButtonContainer();
+    editor.renderer.setScrollMargin(
+      scrollMarginTop,
+      scrollMarginBottom,
+      scrollMarginLeft,
+      scrollMarginRight,
+    );
   }
 
   function scrollCursorIntoView() {
@@ -425,9 +450,8 @@ async function EditorManager($header, $body) {
 
   /**
    * Callback function called on scroll vertically
-   * @param {Boolean} render
    */
-  function onscrollleft(render = true) {
+  function setHScrollValue() {
     if (appSettings.value.textWrap || preventScrollbarH) return;
     const session = editor.getSession();
     const scrollLeft = session.getScrollLeft();
@@ -439,15 +463,18 @@ async function EditorManager($header, $body) {
 
     lastScrollLeft = scrollLeft;
     $hScrollbar.value = factor;
-    if (render) $hScrollbar.render();
     editor._emit('scroll', 'horizontal');
+  }
+
+  function onscrollleft() {
+    setHScrollValue();
+    $hScrollbar.render();
   }
 
   /**
    * Callback function called on scroll vertically
-   * @param {Boolean} render
    */
-  function onscrolltop(render = true) {
+  function setVScrollValue() {
     if (preventScrollbarV) return;
     const session = editor.getSession();
     const scrollTop = session.getScrollTop();
@@ -459,8 +486,12 @@ async function EditorManager($header, $body) {
 
     lastScrollTop = scrollTop;
     $vScrollbar.value = factor;
-    if (render) $vScrollbar.render();
     editor._emit('scroll', 'vertical');
+  }
+
+  function onscrolltop() {
+    setVScrollValue();
+    $vScrollbar.render();
   }
 
   function updateFloatingButton(show = false) {
@@ -501,6 +532,50 @@ async function EditorManager($header, $body) {
     }
   }
 
+  function toggleProblemButton() {
+    const fileWithProblems = manager.files.find((file) => {
+      const annotations = file.session.getAnnotations();
+      return !!annotations.length;
+    });
+
+    if (fileWithProblems) {
+      problemButton.show();
+    } else {
+      problemButton.hide();
+    }
+  }
+
+  function updateSideButtonContainer() {
+    const { showSideButtons } = appSettings.value;
+    if (!showSideButtons) {
+      sideButtonContainer.remove();
+      return;
+    }
+
+    $body.append(sideButtonContainer);
+  }
+
+  function updateMargin(updateGutter = false) {
+    const { showSideButtons, linenumbers, showAnnotations } = appSettings.value;
+    const top = 0;
+    const bottom = 0;
+    const right = showSideButtons ? 15 : 0;
+    const left = linenumbers
+      ? showAnnotations
+        ? 0
+        : -16
+      : 0;
+
+    editor.renderer.setMargin(top, bottom, left, right);
+
+    if (!updateGutter) return;
+
+    editor.setOptions({
+      showGutter: linenumbers || showAnnotations,
+      showLineNumbers: linenumbers,
+    });
+  }
+
   function switchFile(id) {
     const { id: activeFileId } = manager.activeFile || {};
     if (activeFileId === id) return;
@@ -514,8 +589,12 @@ async function EditorManager($header, $body) {
 
     $hScrollbar.remove();
     $vScrollbar.remove();
-    onscrolltop(false);
-    if (!appSettings.value.textWrap) onscrollleft(false);
+
+    setVScrollValue();
+    if (!appSettings.value.textWrap) {
+      setHScrollValue();
+    }
+
     editor.setReadOnly(!file.editable || !!file.loading);
 
     manager.onupdate('switch-file');

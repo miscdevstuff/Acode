@@ -1,6 +1,41 @@
 # Change Log
 
-## [1.8.6] - Build 305
+## [1.8.7]
+
+- New
+  - [x] **Updated Ace editor** | 318
+    - Updated Ace editor to version 1.28.0
+  - [x] **New problems page** | 318
+    - You can now see all the problems in one place.
+    - You can also see the problems in opened file.
+  - [x] **New settings** | 318
+    - New settings to toggle side buttons.
+  - [x] **New Plugin API** | 318
+    - `SideButton` is a new component that can be used to add side buttons.
+  - [x] **New theme color** | 318
+    - New `danger-color` and `danger-text-color` theme color.
+  - [x] **New key binding** | 318
+    - Use `Ctrl+Shift+X` key binding to open problems page.
+  - [x] **Plugin** | 320
+    - Install plugin directly from browser.
+  - [x] **Intent** | 323
+    - Plugin has now API to handle intent with uri acode://module/action/value.
+- Fixes
+  - [x] **Plugin page** | 318
+    - Improved plugin page UI.
+    - Shows plugin quickly when opened and loads new information in background.
+  - [x] **Unsaved changes** | 318
+    - Fixed unsaved changes not showing up in file when app restarted.
+  - [x] **Quicktools** | 319
+    - Fixed quicktools slides back when touch moved slightly.
+  - [x] **Settings** | 321
+    - Fixed settings not saving properly.
+  - [x] **Internal storage** | 322
+    - Fixed renaming file.
+  - [x] **Side buttons** | 323
+    - Fixed side buttons not shown properly.
+
+## [1.8.6] - Build 313
 
 - New
   - [x] **Search in settings**
@@ -8,9 +43,21 @@
 - Updates
   - [x] **Language**
     - Updated language pack for Russian, Spanish, Portuguese and Deutsche.
+  - [x] **Updated Ace editor**
+    - Updated Ace editor to version 1.5.0
 - Fixes
+  - [x] **Sidebar search**
+    - Fixed sidebar search not rendering words with special characters.
   - [x] **Not Loading**
     - Fixed app not loading on older devices.
+  - [x] **Scrolling**
+    - Fixed scrolling not working properly on some devices.
+  - [x] **Eruda console**
+    - Fixed eruda console not working properly.
+  - [x] **Scrollbar**
+    - Fixed scrollbar not working properly.
+  - [x] **Custom theme**
+    - Fixed custom theme not working properly.
 
 ## [1.8.5] - Build 295
 

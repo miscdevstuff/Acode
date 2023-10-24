@@ -2,7 +2,7 @@ import Url from "utils/Url";
 import fonts from 'lib/fonts';
 import box from 'dialogs/box';
 import Color from 'utils/color';
-import themes from 'lib/themes';
+import themes from 'theme/list';
 import files from 'lib/fileList';
 import alert from 'dialogs/alert';
 import Page from 'components/page';
@@ -25,20 +25,22 @@ import palette from 'components/palette';
 import actionStack from 'lib/actionStack';
 import tutorial from 'components/tutorial';
 import FileBrowser from "pages/fileBrowser";
-import ThemeBuilder from 'lib/themeBuilder';
+import ThemeBuilder from 'theme/builder';
 import selectionMenu from "lib/selectionMenu";
 import multiPrompt from 'dialogs/multiPrompt';
 import inputhints from 'components/inputhints';
 import KeyboardEvent from 'utils/keyboardEvent';
 import keyboardHandler from 'handlers/keyboard';
 import windowResize from 'handlers/windowResize';
-import contextmenu from 'components/contextmenu';
+import Contextmenu from 'components/contextmenu';
 import formatterSettings from "settings/formatterSettings";
+import settingsPage from 'components/settingsPage';
+import SideButton from 'components/sideButton';
 
 import { addedFolder } from 'lib/openFolder';
 import { decode, encode } from 'utils/encodings';
 import { addMode, removeMode } from 'ace/modelist';
-import settingsPage from 'components/settingsPage';
+import { addIntentHandler, removeIntentHandler } from 'handlers/intent';
 
 export default class Acode {
   #modules = {};
@@ -85,6 +87,11 @@ export default class Acode {
       removeMode,
     };
 
+    const intent = {
+      addHandler: addIntentHandler,
+      removeHandler: removeIntentHandler,
+    };
+
     this.define('Url', Url);
     this.define('page', Page);
     this.define('Color', Color);
@@ -95,6 +102,7 @@ export default class Acode {
     this.define('loader', loader);
     this.define('dialogBox', box);
     this.define('prompt', prompt);
+    this.define('intent', intent);
     this.define('fileList', files);
     this.define('fs', fsOperation);
     this.define('confirm', confirm);
@@ -105,6 +113,7 @@ export default class Acode {
     this.define('aceModes', aceModes);
     this.define('themes', themesModule);
     this.define('settings', appSettings);
+    this.define('sideButton', SideButton);
     this.define('EditorFile', EditorFile);
     this.define('inputhints', inputhints);
     this.define('openfolder', openFolder);
@@ -112,7 +121,7 @@ export default class Acode {
     this.define('actionStack', actionStack);
     this.define('multiPrompt', multiPrompt);
     this.define('addedfolder', addedFolder);
-    this.define('contextMenu', contextmenu);
+    this.define('contextMenu', Contextmenu);
     this.define('fileBrowser', FileBrowser);
     this.define('fsOperation', fsOperation);
     this.define('keyboard', keyboardHandler);

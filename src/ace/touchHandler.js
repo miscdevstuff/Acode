@@ -11,8 +11,9 @@ export let scrollAnimationFrame; // scroll animation frame id
  * Handler for touch events
  * @param {AceAjax.Editor} editor Ace editor instance
  * @param {boolean} minimal if true, disable selection, menu and cursor
- */
+*/
 export default function addTouchListeners(editor, minimal, onclick) {
+  const SCROLL_CAPTURE_TIME = 30; // ms
   const { renderer, container: $el } = editor;
   const { scroller, $gutter } = renderer;
 
@@ -108,6 +109,7 @@ export default function addTouchListeners(editor, minimal, onclick) {
   let timeTouchStart; // time of touch start
   let touchEnded = true; // true if touch ended
   let threshold = appSettings.value.touchMoveThreshold;
+  let captureLastPos; // last x for capturing touchmove
 
   $el.addEventListener('touchstart', touchStart, config, true);
   scroller.addEventListener('contextmenu', contextmenu, config);
@@ -165,6 +167,7 @@ export default function addTouchListeners(editor, minimal, onclick) {
    * @param {TouchEvent} e Touch event
    */
   function touchStart(e) {
+    /**@type {HTMLElement} */
     const $target = e.target;
     cancelAnimationFrame(scrollAnimationFrame);
     const { clientX, clientY } = e.touches[0];
@@ -224,19 +227,31 @@ export default function addTouchListeners(editor, minimal, onclick) {
       return;
     }
 
-    const { clientX, clientY } = e.touches[0];
+    let { clientX, clientY } = e.touches[0];
+    clientX = Math.round(clientX * 100) / 100;
+    clientY = Math.round(clientY * 100) / 100;
 
     moveX = clientX - lastX;
     moveY = clientY - lastY;
-
     lastX = clientX;
     lastY = clientY;
+
+    if (!captureLastPos) {
+      captureLastPos = setTimeout(() => {
+        captureLastPos = null;
+        if (touchEnded && mode === 'scroll') {
+          const scrollX = lockX ? 0 : lastX - clientX;
+          const scrollY = lockY ? 0 : lastY - clientY;
+          scrollAnimation(scrollX, scrollY);
+        }
+      }, SCROLL_CAPTURE_TIME);
+    }
 
     if (!moveX && !moveY) {
       return;
     }
 
-    if (!lockX && !lockY) {
+    if (!diagonalScrolling && !lockX && !lockY) {
       if (Math.abs(moveX) > Math.abs(moveY)) {
         lockY = true;
       } else {
@@ -270,6 +285,10 @@ export default function addTouchListeners(editor, minimal, onclick) {
     // preventDefault
     removeListeners();
     touchEnded = true;
+
+    if (mode === 'scroll') {
+      return;
+    }
 
     const { clientX, clientY } = e.changedTouches[0];
 
@@ -308,17 +327,6 @@ export default function addTouchListeners(editor, minimal, onclick) {
       }
     }
 
-    if (mode === 'scroll') {
-      if (!moveX && !moveY) {
-        onscrollend();
-        return;
-      }
-
-      scrollAnimation(moveX, moveY);
-      return;
-    }
-
-    cancelAnimationFrame(scrollAnimationFrame);
     if (minimal && mode === 'cursor') {
       moveCursorTo(clientX, clientY);
       if (onclick) onclick();
@@ -507,14 +515,6 @@ export default function addTouchListeners(editor, minimal, onclick) {
     let direction = reverseScrolling ? 1 : -1;
     let scrollX = direction * x;
     let scrollY = direction * y;
-
-    if (!diagonalScrolling) {
-      if (lockX) {
-        scrollX = 0;
-      } else {
-        scrollY = 0;
-      }
-    }
 
     renderer.scrollBy(scrollX, scrollY);
   }

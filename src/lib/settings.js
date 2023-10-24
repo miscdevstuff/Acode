@@ -1,10 +1,10 @@
-import constants from './constants';
-import fsOperation from 'fileSystem';
-import helpers from 'utils/helpers';
-import Url from 'utils/Url';
 import lang from './lang';
-import ThemeBuilder from './themeBuilder';
-import themes from './themes';
+import Url from 'utils/Url';
+import themes from 'theme/list';
+import constants from './constants';
+import helpers from 'utils/helpers';
+import fsOperation from 'fileSystem';
+import ThemeBuilder from 'theme/builder';
 
 /**
  * @typedef {object} fileBrowserSettings
@@ -120,7 +120,7 @@ class Settings {
       checkFiles: true,
       desktopMode: false,
       console: this.CONSOLE_LEGACY,
-      keyboardMode: this.KEYBOARD_MODE_NORMAL,
+      keyboardMode: this.KEYBOARD_MODE_NO_SUGGESTIONS_AGGRESSIVE,
       rememberFiles: true,
       rememberFolders: true,
       diagonalScrolling: false,
@@ -142,6 +142,8 @@ class Settings {
       colorPreview: true,
       maxRetryCount: 3,
       showRetryToast: false,
+      showSideButtons: true,
+      showAnnotations: false,
     };
     this.value = structuredClone(this.#defaultSettings);
   }
@@ -366,7 +368,7 @@ function areEqual(obj1, obj2) {
     if (!obj2.hasOwnProperty(key)) return false;
     if (obj1[key] === obj2[key]) continue;
     if (typeof obj1[key] !== 'object') return false;
-    if (!this.isObjectEqual(obj1[key], obj2[key])) return false;
+    if (!areEqual(obj1[key], obj2[key])) return false;
   }
 
   return true;
