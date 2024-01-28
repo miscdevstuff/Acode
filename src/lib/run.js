@@ -13,6 +13,7 @@ import EditorFile from './editorFile';
 import tutorial from 'components/tutorial';
 import box from 'dialogs/box';
 import alert from 'dialogs/alert';
+import browser from 'plugins/browser';
 
 /**@type {Server} */
 let webServer;
@@ -447,10 +448,7 @@ async function run(
       return;
     }
 
-    const browser = system.inAppBrowser(src, filename, !isConsole, appSettings.value.disableCache);
-    browser.onOpenExternalBrowser = () => {
-      target = "browser";
-    };
+    browser.open(src);
   }
 }
 
