@@ -1,7 +1,47 @@
+import select from "dialogs/select";
+import Ref from "html-tag-js/ref";
 import EditorFile from "lib/editorFile";
 import styles from "./assistant.module.scss";
 
 export default function openAIAssistantPage() {
+	// References
+	const profileBtnRef = new Ref();
+
+	// States
+	let currentProfile = "ask"; // Default to ask profile
+
+	/**
+	 * Updates the profile button appearance and state
+	 * @param {string} profile - Profile type ("ask" or "write")
+	 */
+	const handleProfileSwitch = (profile) => {
+		const iconEl = profileBtnRef.el.querySelector("i:first-child");
+		const textEl = profileBtnRef.el.querySelector("span");
+
+		currentProfile = profile;
+
+		// Update button appearance based on selected profile
+		if (profile === "ask") {
+			iconEl.className = "icon help";
+			textEl.textContent = "Ask";
+		} else {
+			iconEl.className = "icon edit";
+			textEl.textContent = "Write";
+		}
+	};
+
+	/**
+	 * Shows profile selection menu
+	 */
+	const showProfileMenu = async (e) => {
+		e.preventDefault();
+		const profile = await select("Select Profile", [
+			{ value: "ask", text: "Ask", icon: "help" },
+			{ value: "write", text: "Write", icon: "edit" },
+		]);
+		handleProfileSwitch(profile);
+	};
+
 	const aiAssistantContainer = (
 		<div className="chat-container">
 			{/* Header */}
@@ -18,82 +58,16 @@ export default function openAIAssistantPage() {
 					</button>
 					<div className="separator"></div>
 					<div className="profile-switcher">
-						<button className="profile-button" id="profile-btn">
-							<i className="icon edit"></i>
-							<span>Write</span>
+						<button
+							className="profile-button"
+							id="profile-btn"
+							ref={profileBtnRef}
+							onclick={showProfileMenu}
+						>
+							<i className="icon help"></i>
+							<span>Ask</span>
 							<i className="icon keyboard_arrow_down"></i>
 						</button>
-						<div className="profile-dropdown" id="profile-dropdown">
-							<div className="profile-option" data-profile="ask">
-								<div className="profile-option-header">
-									<i className="icon info_outline"></i>
-									<span>Ask</span>
-								</div>
-								<div className="profile-option-description">
-									Suggest approaches without writing code
-								</div>
-							</div>
-							<div className="profile-option" data-profile="write">
-								<div className="profile-option-header">
-									<i className="icon edit"></i>
-									<span>Write</span>
-								</div>
-								<div className="profile-option-description">
-									Write and implement code
-								</div>
-							</div>
-							<div className="profile-option" data-profile="custom">
-								<div className="profile-option-header">
-									<i className="icon settings"></i>
-									<span>Custom</span>
-								</div>
-								<div className="profile-option-description">
-									Custom permissions and capabilities
-								</div>
-								<div className="permission-toggles" id="custom-permissions">
-									<div className="permission-toggle">
-										<div className="permission-label">
-											<i data-feather="globe" className="feather-xs"></i>
-											<span>Network Requests</span>
-										</div>
-										<label className="toggle-switch">
-											<input type="checkbox" checked />
-											<span className="toggle-slider"></span>
-										</label>
-									</div>
-									<div className="permission-toggle">
-										<div className="permission-label">
-											<i data-feather="file" className="feather-xs"></i>
-											<span>Read Files</span>
-										</div>
-										<label className="toggle-switch">
-											<input type="checkbox" checked />
-											<span className="toggle-slider"></span>
-										</label>
-									</div>
-									<div className="permission-toggle">
-										<div className="permission-label">
-											<i data-feather="edit" className="feather-xs"></i>
-											<span>Write Files</span>
-										</div>
-										<label className="toggle-switch">
-											<input type="checkbox" />
-											<span className="toggle-slider"></span>
-										</label>
-									</div>
-									<div className="permission-toggle">
-										<div className="permission-label">
-											<i data-feather="terminal" className="feather-xs"></i>
-											<span>Execute Commands</span>
-										</div>
-										<label className="toggle-switch">
-											<input type="checkbox" />
-											<span className="toggle-slider"></span>
-										</label>
-									</div>
-								</div>
-							</div>
-						</div>
 					</div>
 				</div>
 				<div className="header-right">
@@ -199,6 +173,4 @@ export default function openAIAssistantPage() {
 		stylesheets: styles,
 		hideQuickTools: true,
 	});
-
-	console.log("Opened AI Assistant tab.");
 }
