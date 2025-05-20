@@ -6,6 +6,7 @@ import styles from "./assistant.module.scss";
 export default function openAIAssistantPage() {
 	// References
 	const profileBtnRef = new Ref();
+	const historySidebarRef = new Ref();
 
 	// States
 	let currentProfile = "ask"; // Default to ask profile
@@ -42,6 +43,10 @@ export default function openAIAssistantPage() {
 		handleProfileSwitch(profile);
 	};
 
+	const toggleHistorySidebar = () => {
+		historySidebarRef.classList.toggle("hidden");
+	};
+
 	const aiAssistantContainer = (
 		<div className="chat-container">
 			{/* Header */}
@@ -52,7 +57,11 @@ export default function openAIAssistantPage() {
 						<span className="btn-text">New Chat</span>
 					</button>
 					<div className="separator"></div>
-					<button className="btn btn-sm btn-outline" id="toggle-history-btn">
+					<button
+						onclick={toggleHistorySidebar}
+						className="btn btn-sm btn-outline"
+						id="toggle-history-btn"
+					>
 						<i className="icon historyrestore"></i>
 						<span className="btn-text">History</span>
 					</button>
@@ -80,7 +89,11 @@ export default function openAIAssistantPage() {
 			{/* Main content */}
 			<div className="chat-main">
 				{/* Chat history sidebar */}
-				<div className="chat-sidebar hidden" id="chat-sidebar">
+				<div
+					className="chat-sidebar hidden"
+					id="chat-sidebar"
+					ref={historySidebarRef}
+				>
 					<div className="sidebar-header">
 						<h3 className="sidebar-title">CHAT HISTORY</h3>
 						<button className="btn btn-icon">
