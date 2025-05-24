@@ -165,12 +165,22 @@
     .message {
       padding: 1rem 1.5rem;
       border-bottom: 1px solid var(--border-color);
+      user-select: text;
+
+      *::selection {
+        background-color: color-mix(
+          in srgb,
+          var(--popup-background-color) 50%,
+          white
+        );
+        color: var(--active-color);
+      }
     }
 
     .message.user {
       background-color: color-mix(
         in srgb,
-        var(--popup-background-color) 20%,
+        var(--primary-color) 45%,
         transparent
       );
     }
@@ -192,7 +202,7 @@
 
     .message-sender.ai {
       background-color: var(--active-icon-color);
-      color: var(--active-color);
+      color: color-mix(in srgb, var(--active-color) 70%, transparent);
     }
 
     .message-sender.user {
@@ -208,7 +218,7 @@
 
     .message-time {
       font-size: 0.75rem;
-      color: color-mix(in srgb, var(--popup-text-color) 70%, transparent);
+      color: color-mix(in srgb, var(--secondary-text-color) 70%, transparent);
       margin-right: 0.25rem;
     }
 
@@ -589,56 +599,97 @@
     }
   }
 
-  .chat-input-container {
+  .input-area {
+    /* padding: 1.5rem; */
+    padding: 1rem;
+    background: var(--primary-color);
     border-top: 1px solid var(--border-color);
-    background-color: var(--secondary-color);
 
-    .chat-input-wrapper {
-      position: relative;
+    .input-container {
       display: flex;
-      flex-direction: column;
-      background-color: color-mix(
-        in srgb,
-        var(--popup-background-color) 20%,
-        transparent
-      );
+      align-items: flex-end;
+      gap: 0.75rem;
+      background: transparent;
       border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
-      overflow: hidden;
-      margin: 1rem;
+      border-radius: 12px;
+      padding: 0.75rem;
 
-      .chat-input {
-        width: 100%;
-        min-height: 44px;
-        max-height: 200px;
-        padding: 0.75rem 1rem;
-        background-color: transparent;
+      &:focus-within {
+        border-color: var(--active-color);
+      }
+
+      .attach-btn {
+        width: 32px;
+        height: 32px;
         border: none;
-        color: var(--primary-text-color);
-        font-size: 0.875rem;
-        resize: none;
-        overflow-y: auto;
-        &:focus {
-          outline: none;
+        background: none;
+        cursor: pointer;
+        color: color-mix(in srgb, var(--primary-text-color) 50%, transparent);
+        transition: color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        &:hover {
+          color: var(--primary-text-color);
         }
       }
 
-      .chat-input-actions {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.5rem 0.75rem;
-        border-top: 1px solid var(--border-color);
-
-        .input-tools {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
+      .chat-input {
+        flex: 1;
+        min-height: 32px;
+        max-height: 120px;
+        border: none;
+        background: transparent;
+        resize: none;
+        font-family: inherit;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: var(--primary-text-color);
+        outline: none;
+        &::placeholder {
+          color: color-mix(in srgb, var(--primary-text-color) 50%, transparent);
         }
-        .input-send {
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+
+        .action-btn {
+          width: 32px;
+          height: 32px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+
+        .stop-btn {
+          background: var(--error-text-color);
+          color: white;
+          display: none;
+        }
+
+        .stop-btn:hover {
+          background: color-mix(in srgb, var(--error-text-color) 80%, white);
+        }
+
+        .send-btn {
+          background: var(--button-background-color);
+          color: var(--button-text-color);
+        }
+
+        .send-btn:hover {
+          background: var(--button-active-color);
+        }
+
+        .send-btn:disabled {
+          background: var(--popup-background-color);
+          color: color-mix(in srgb, var(--primary-text-color) 50%, transparent);
+          cursor: not-allowed;
         }
       }
     }
@@ -723,130 +774,6 @@
     color: var(--primary-text-color);
     font-size: 0.75rem;
     cursor: pointer;
-  }
-
-  .profile-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 280px;
-    margin-top: 0.25rem;
-    background-color: color-mix(
-      in srgb,
-      var(--popup-background-color) 20%,
-      transparent
-    );
-    border: 1px solid var(--border-color);
-    border-radius: 0.375rem;
-    overflow: hidden;
-    z-index: 10;
-    display: none;
-  }
-
-  .profile-dropdown.open {
-    display: block;
-  }
-
-  .profile-option {
-    padding: 0.75rem 1rem;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .profile-option:last-child {
-    border-bottom: none;
-  }
-
-  .profile-option:hover {
-    background-color: var(--popup-background-color);
-  }
-
-  .profile-option-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    margin-bottom: 0.25rem;
-  }
-
-  .profile-option-description {
-    font-size: 0.625rem;
-    color: color-mix(in srgb, var(--popup-text-color) 70%, transparent);
-    margin-bottom: 0.5rem;
-  }
-
-  .permission-toggles {
-    margin-top: 0.75rem;
-    display: none;
-  }
-
-  .permission-toggles.visible {
-    display: block;
-  }
-
-  .permission-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-  }
-
-  .permission-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  .toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 36px;
-    height: 20px;
-  }
-
-  .toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--popup-background-color);
-    transition: all 0.2s ease;
-    border-radius: 34px;
-  }
-
-  .toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 16px;
-    width: 16px;
-    left: 2px;
-    bottom: 2px;
-    background-color: color-mix(
-      in srgb,
-      var(--popup-text-color) 70%,
-      transparent
-    );
-    transition: all 0.2s ease;
-    border-radius: 50%;
-  }
-
-  input:checked + .toggle-slider {
-    background-color: var(--blue-tertiary);
-  }
-
-  input:checked + .toggle-slider:before {
-    transform: translateX(16px);
-    background-color: var(--blue-primary);
   }
 
   /* Loading indicator */
@@ -978,78 +905,6 @@
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
-  }
-
-  /* Markdown styles */
-  .markdown h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 1.5rem 0 1rem;
-  }
-
-  .markdown h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 1.25rem 0 0.75rem;
-  }
-
-  .markdown h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 1rem 0 0.5rem;
-  }
-
-  .markdown ul,
-  .markdown ol {
-    margin: 0.75rem 0;
-    padding-left: 1.5rem;
-  }
-
-  .markdown li {
-    margin-bottom: 0.25rem;
-  }
-
-  .markdown a {
-    color: var(--blue-primary);
-    text-decoration: none;
-  }
-
-  .markdown a:hover {
-    text-decoration: underline;
-  }
-
-  .markdown blockquote {
-    border-left: 3px solid var(--border-color);
-    padding-left: 1rem;
-    margin: 1rem 0;
-    color: var(--secondary-text-color);
-  }
-
-  .markdown table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1rem 0;
-  }
-
-  .markdown th,
-  .markdown td {
-    padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    text-align: left;
-  }
-
-  .markdown th {
-    background-color: var(--popup-background-color);
-  }
-
-  .feather-sm {
-    width: 16px;
-    height: 16px;
-  }
-
-  .feather-xs {
-    width: 14px;
-    height: 14px;
   }
 
   /* Responsive styles */
