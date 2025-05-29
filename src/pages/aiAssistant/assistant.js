@@ -8,6 +8,8 @@ import settings from "lib/settings";
 import markdownIt from "markdown-it";
 import styles from "./assistant.module.scss";
 
+let aiTabInstance;
+
 export default function openAIAssistantPage() {
 	// References
 	const profileBtnRef = new Ref();
@@ -265,7 +267,7 @@ export default function openAIAssistantPage() {
 					`#message-${assistantMsgId} .message-content`,
 				);
 				if (messageEl) {
-					messageEl.innerHTML += `<span style="color: var(--error-text-color);background-color: var(--danger-color);">Cancelled by user.</span>`;
+					messageEl.innerHTML += `<div class="badge badge-red">Cancelled by user.</div>`;
 				}
 			} else {
 				const messageEl = messageContainerRef.el.querySelector(
@@ -276,57 +278,110 @@ export default function openAIAssistantPage() {
 				}
 			}
 		} finally {
-			// add copy button to code blocks
-			const codeBlocks = messageContainerRef.el
-				.querySelector(`#message-${assistantMsgId} .message-content`)
-				.querySelectorAll("pre");
-			codeBlocks.forEach((pre) => {
-				pre.style.position = "relative";
-				const copyButton = document.createElement("button");
-				copyButton.className = "copy-button";
-				copyButton.textContent = "Copy";
+			// add custom code blocks with syntax highlighting
+			const messageContent = messageContainerRef.el.querySelector(
+				`#message-${assistantMsgId} .message-content`,
+			);
 
-				const codeElement = pre.querySelector("code");
+			// Replace markdown code blocks with custom components
+			messageContent.innerHTML = messageContent.innerHTML.replace(
+				/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
+				(match, language, code) => {
+					language = language || "plaintext";
+
+					return `
+					<div class="code-block">
+						<div class="code-header">
+							<div class="code-language">
+								<i class="icon code"></i>
+								<span>${language}</span>
+							</div>
+							<div class="code-actions">
+								<button class="btn btn-icon code-copy" title="Copy code">
+									<i class="icon copy"></i>
+								</button>
+							</div>
+						</div>
+						<div class="code-content">
+							<pre><code class="language-${language}">${code}</code></pre>
+						</div>
+						<div class="code-expand">
+							<i class="icon keyboard_arrow_down"></i>
+							<span>Show more</span>
+						</div>
+					</div>
+				`;
+				},
+			);
+
+			// Process all code blocks
+			const codeBlocks = messageContent.querySelectorAll(".code-block");
+			codeBlocks.forEach((codeBlock) => {
+				const codeContent = codeBlock.querySelector(".code-content");
+				const codeElement = codeBlock.querySelector("code");
+				const copyButton = codeBlock.querySelector(".code-copy");
+				const expandButton = codeBlock.querySelector(".code-expand");
+
+				// Apply Ace highlighting
 				if (codeElement) {
-					const langMatch = codeElement.className.match(
-						/language-(\w+)|(javascript)/,
-					);
+					const langMatch = codeElement.className.match(/language-(\w+)/);
 					if (langMatch) {
 						const langMap = {
 							bash: "sh",
 							shell: "sh",
 						};
-						const lang = langMatch[1] || langMatch[2];
+						const lang = langMatch[1];
 						const mappedLang = langMap[lang] || lang;
 						const highlight = ace.require("ace/ext/static_highlight");
-						highlight(codeElement, {
-							mode: `ace/mode/${mappedLang}`,
-							theme: settings.value.editorTheme.startsWith("ace/theme/")
+						highlight.render(
+							codeElement.textContent,
+							`ace/mode/${mappedLang}`,
+							settings.value.editorTheme.startsWith("ace/theme/")
 								? settings.value.editorTheme
 								: "ace/theme/" + settings.value.editorTheme,
-						});
+							1,
+							true,
+							(highlighted) => {
+								aiTabInstance?.addStyle(highlighted.css);
+								codeElement.innerHTML = highlighted.html;
+							},
+						);
 					}
 				}
 
+				// copy functionality
 				copyButton.addEventListener("click", async () => {
-					const code =
-						pre.querySelector("code")?.textContent || pre.textContent;
+					const code = codeElement?.textContent || "";
 					try {
 						cordova.plugins.clipboard.copy(code);
-						copyButton.textContent = "Copied!";
+						copyButton.querySelector("i").className = "icon check";
 						setTimeout(() => {
-							copyButton.textContent = "Copy";
+							copyButton.querySelector("i").className = "icon copy";
 						}, 2000);
 					} catch (err) {
-						copyButton.textContent = "Failed to copy";
+						copyButton.querySelector("i").className =
+							"icon warningreport_problem";
 						setTimeout(() => {
-							copyButton.textContent = "Copy";
+							copyButton.querySelector("i").className = "icon copy";
 						}, 2000);
 					}
 				});
 
-				pre.appendChild(copyButton);
+				// expand/collapse functionality
+				expandButton.addEventListener("click", () => {
+					const isExpanded = codeContent.classList.contains("expanded");
+					codeContent.classList.toggle("expanded", !isExpanded);
+					expandButton.innerHTML = isExpanded
+						? `<i class="icon keyboard_arrow_down"></i> <span>Show more</span>`
+						: `<i class="icon keyboard_arrow_up"></i> <span>Show less</span>`;
+				});
+
+				// Only show expand button if content overflows
+				if (codeContent.scrollHeight <= codeContent.clientHeight) {
+					expandButton.style.display = "none";
+				}
 			});
+
 			currentController = null;
 			sendBtnRef.el.style.display = "block";
 			stopBtnRef.el.style.display = "none";
@@ -491,7 +546,7 @@ export default function openAIAssistantPage() {
 	}
 
 	// Create a new EditorFile instance for the AI Assistant tab
-	new EditorFile("AI Assistant", {
+	aiTabInstance = new EditorFile("AI Assistant", {
 		uri: uri,
 		type: "page",
 		tabIcon: "file file_type_assistant",
