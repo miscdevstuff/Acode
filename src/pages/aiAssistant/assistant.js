@@ -77,7 +77,7 @@ export default function openAIAssistantPage() {
 
 	const showLoading = () => {
 		const loadingEl = tag("div", {
-			className: "loading",
+			className: "ai_loading",
 			id: "loading-indicator",
 		});
 		const loadingDots = tag("div", {
@@ -91,14 +91,14 @@ export default function openAIAssistantPage() {
 			loadingDots.appendChild(dot);
 		}
 
-		const text = tag("div", {
+		const text = tag("span", {
 			textContent: "AI is thinking...",
 		});
 
 		loadingEl.appendChild(loadingDots);
 		loadingEl.appendChild(text);
 
-		messageContainerRef.append(loadingEl);
+		messageContainerRef.el.appendChild(loadingEl);
 		scrollToBottom();
 	};
 
@@ -175,7 +175,7 @@ export default function openAIAssistantPage() {
 
 		messageEl.appendChild(messageHeader);
 		messageEl.appendChild(messageContent);
-		messageContainerRef.append(messageEl);
+		messageContainerRef.el.appendChild(messageEl);
 		scrollToBottom();
 	};
 
@@ -211,15 +211,8 @@ export default function openAIAssistantPage() {
 		chatInputRef.value = "";
 		chatInputRef.style.height = "auto";
 
-		// Add assistant message placeholder to UI
-		const assistantMsgId = generateMessageId();
-		const assistantMessage = {
-			id: assistantMsgId,
-			role: "assistant",
-			content: "",
-			timestamp: Date.now(),
-		};
-		addMessage(assistantMessage);
+		// Show loading indicator
+		showLoading();
 
 		// Prepare inputs for agent
 		let inputs = { messages: [...chatHistory] };
@@ -228,16 +221,30 @@ export default function openAIAssistantPage() {
 		sendBtnRef.el.style.display = "none";
 		stopBtnRef.el.style.display = "block";
 
-		try {
-			const messageEl = messageContainerRef.el.querySelector(
-				`#message-${assistantMsgId} .message-content`,
-			);
-			let streamedContent = "";
+		const assistantMsgId = generateMessageId();
 
+		try {
 			const stream = await agent.stream(inputs, {
 				streamMode: "messages",
 				signal: currentController.signal,
 			});
+
+			// Remove loading indicator
+			removeLoading();
+
+			// Add assistant message placeholder
+			const assistantMessage = {
+				id: assistantMsgId,
+				role: "assistant",
+				content: "",
+				timestamp: Date.now(),
+			};
+			addMessage(assistantMessage);
+
+			const messageEl = messageContainerRef.el.querySelector(
+				`#message-${assistantMsgId} .message-content`,
+			);
+			let streamedContent = "";
 
 			for await (const [message, _metadata] of stream) {
 				if (isAIMessageChunk(message) && message.tool_call_chunks?.length) {
@@ -262,6 +269,7 @@ export default function openAIAssistantPage() {
 				timeEl.textContent = formatTime(Date.now());
 			}
 		} catch (err) {
+			removeLoading();
 			if (/abort/i.test(err.message)) {
 				const messageEl = messageContainerRef.el.querySelector(
 					`#message-${assistantMsgId} .message-content`,
