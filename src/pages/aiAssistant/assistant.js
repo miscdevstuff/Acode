@@ -4,7 +4,6 @@ import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import confirm from "dialogs/confirm";
 import select from "dialogs/select";
-import he from "he";
 import Ref from "html-tag-js/ref";
 import EditorFile from "lib/editorFile";
 import settings from "lib/settings";
@@ -19,6 +18,7 @@ import {
 	getMessagesForConversation,
 	updateConversation,
 } from "./db";
+import { SYSTEM_PROMPT } from "./system_prompt";
 
 export default function openAIAssistantPage() {
 	// References
@@ -50,6 +50,7 @@ export default function openAIAssistantPage() {
 		llm: model,
 		tools: [searchTool],
 		checkpointSaver: agentCheckpointer,
+		stateModifier: SYSTEM_PROMPT,
 	});
 
 	const generateConversationId = () =>
@@ -89,7 +90,6 @@ export default function openAIAssistantPage() {
 			/<pre><code(?: class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g,
 			(match, language, code) => {
 				language = language || "plaintext";
-				code = he.decode(code);
 				return `
 					<div class="code-block">
 						<div class="code-header">
@@ -498,13 +498,8 @@ export default function openAIAssistantPage() {
 		showLoading();
 
 		let messagesForAgentTurn;
-		const systemPrompt = {
-			role: "system",
-			content: `You are an AI assistant in Acode code editor. Profile: ${currentProfile}. Be helpful and concise.`,
-		};
-		//Gemini Api expects system prompt as first message
 		if (chatHistory.filter((msg) => msg.role === "user").length === 1) {
-			messagesForAgentTurn = [systemPrompt, userMessageForAgent];
+			messagesForAgentTurn = [userMessageForAgent];
 		} else {
 			messagesForAgentTurn = [userMessageForAgent];
 		}
