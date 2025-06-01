@@ -2,6 +2,7 @@ import { isAIMessageChunk } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import confirm from "dialogs/confirm";
 import select from "dialogs/select";
 import he from "he";
 import Ref from "html-tag-js/ref";
@@ -340,26 +341,51 @@ export default function openAIAssistantPage() {
 		if (!historyItemsContainer) return;
 		historyItemsContainer.innerHTML = "";
 		conversations.forEach((conv) => {
-			const item = document.createElement("div");
-			item.className = `history-item ${conv.id === currentConversationId ? "active" : ""}`;
-			item.onclick = () => {
-				if (conv.id !== currentConversationId) {
-					loadOrCreateConversation(conv.id);
-					toggleHistorySidebar();
+			const item = (
+				<div
+					className={`history-item ${conv.id === currentConversationId ? "active" : ""}`}
+					onclick={() => {
+						if (conv.id !== currentConversationId) {
+							loadOrCreateConversation(conv.id);
+							toggleHistorySidebar();
+						}
+					}}
+				/>
+			);
+
+			const iconWrapper = (
+				<div className="history-icon">
+					<i
+						className={`icon ${conv.profile === "write" ? "edit" : "chat_bubble"}`}
+					></i>
+				</div>
+			);
+
+			const text = (
+				<div className="history-text">{conv.title || "Untitled Chat"}</div>
+			);
+
+			const deleteBtn = (
+				<button className="btn btn-icon history-delete" title="Delete chat">
+					<i className="icon delete"></i>
+				</button>
+			);
+			deleteBtn.onclick = async (e) => {
+				e.stopPropagation();
+				const confirmation = await confirm(
+					"Delete Chat",
+					`Are you sure you want to delete "<strong>${conv.title || "Untitled Chat"}</strong>"? This action cannot be undone.`,
+					true,
+				);
+				if (!confirmation) return;
+				await deleteConversation(conv.id);
+				if (conv.id === currentConversationId) {
+					await loadOrCreateConversation(null);
 				}
+				await updateHistorySidebar();
 			};
 
-			const iconWrapper = document.createElement("div");
-			iconWrapper.className = "history-icon";
-			const icon = document.createElement("i");
-			icon.className = `icon ${conv.profile === "write" ? "edit" : "chat_bubble"}`;
-			iconWrapper.appendChild(icon);
-
-			const text = document.createElement("div");
-			text.className = "history-text";
-			text.textContent = conv.title || "Untitled Chat";
-
-			item.append(iconWrapper, text);
+			item.append(iconWrapper, text, deleteBtn);
 			historyItemsContainer.appendChild(item);
 		});
 	}
@@ -696,9 +722,12 @@ export default function openAIAssistantPage() {
 				>
 					<div className="sidebar-header">
 						<h3 className="sidebar-title">CHAT HISTORY</h3>
-						<button className="btn btn-icon" title="New Chat from Sidebar">
+						<button
+							className="btn btn-icon"
+							title="New Chat from Sidebar"
+							onclick={() => loadOrCreateConversation(null)}
+						>
 							<i className="icon add"></i>
-							{/* onclick={() => loadOrCreateConversation(null)} */}
 						</button>
 					</div>
 					<div className="chat-history">
