@@ -36,6 +36,10 @@ export default function openAIAssistantPage() {
 	let aiTabInstance;
 
 	const GEMINI_API_KEY = ""; // Replace
+
+	const searchTool = {
+		googleSearch: {},
+	};
 	const agentCheckpointer = new MemorySaver();
 	const model = new ChatGoogleGenerativeAI({
 		model: "gemini-2.0-flash",
@@ -43,7 +47,7 @@ export default function openAIAssistantPage() {
 	});
 	const agent = createReactAgent({
 		llm: model,
-		tools: [],
+		tools: [searchTool],
 		checkpointSaver: agentCheckpointer,
 	});
 
@@ -66,6 +70,115 @@ export default function openAIAssistantPage() {
 
 	const scrollToBottom = () => {
 		messageContainerRef.el.scrollTop = messageContainerRef.el.scrollHeight;
+	};
+
+	// Format code blocks with custom UI elements
+	const formatCodeBlocks = (contentElement, content) => {
+		if (!contentElement) return;
+
+		const md = markdownIt({
+			html: true,
+			linkify: true,
+			typographer: true,
+		});
+
+		contentElement.innerHTML = md.render(content);
+
+		contentElement.innerHTML = contentElement.innerHTML.replace(
+			/<pre><code(?: class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g,
+			(match, language, code) => {
+				language = language || "plaintext";
+				code = he.decode(code);
+				return `
+					<div class="code-block">
+						<div class="code-header">
+							<div class="code-language">
+								<i class="icon code"></i>
+								<span>${language}</span>
+							</div>
+							<div class="code-actions">
+								<button class="btn btn-icon code-copy" title="Copy code">
+									<i class="icon copy"></i>
+								</button>
+							</div>
+						</div>
+						<div class="code-content">
+							<pre><code class="language-${language}">${code}</code></pre>
+						</div>
+						<div class="code-expand">
+							<i class="icon keyboard_arrow_down"></i>
+							<span>Show more</span>
+						</div>
+					</div>
+				`;
+			},
+		);
+
+		contentElement.querySelectorAll(".code-block").forEach((codeBlock) => {
+			const codeContent = codeBlock.querySelector(".code-content");
+			const codeElement = codeBlock.querySelector("pre code");
+			const copyButton = codeBlock.querySelector(".code-copy");
+			const expandButton = codeBlock.querySelector(".code-expand");
+
+			// Apply Ace highlighting
+			if (codeElement) {
+				const langMatch = codeElement.className.match(/language-(\w+)/);
+				if (langMatch) {
+					const langMap = {
+						bash: "sh",
+						shell: "sh",
+					};
+					const lang = langMatch[1];
+					const mappedLang = langMap[lang] || lang;
+					const highlight = ace.require("ace/ext/static_highlight");
+					highlight.render(
+						codeElement.textContent,
+						`ace/mode/${mappedLang}`,
+						settings.value.editorTheme.startsWith("ace/theme/")
+							? settings.value.editorTheme
+							: "ace/theme/" + settings.value.editorTheme,
+						1,
+						true,
+						(highlighted) => {
+							aiTabInstance?.addStyle(highlighted.css);
+							codeElement.innerHTML = highlighted.html;
+						},
+					);
+				}
+			}
+
+			// copy functionality
+			copyButton.addEventListener("click", async () => {
+				const code = codeElement?.textContent || "";
+				try {
+					cordova.plugins.clipboard.copy(code);
+					copyButton.querySelector("i").className = "icon check";
+					setTimeout(() => {
+						copyButton.querySelector("i").className = "icon copy";
+					}, 2000);
+				} catch (err) {
+					copyButton.querySelector("i").className =
+						"icon warningreport_problem";
+					setTimeout(() => {
+						copyButton.querySelector("i").className = "icon copy";
+					}, 2000);
+				}
+			});
+
+			// expand/collapse functionality
+			expandButton.addEventListener("click", () => {
+				const isExpanded = codeContent.classList.contains("expanded");
+				codeContent.classList.toggle("expanded", !isExpanded);
+				expandButton.innerHTML = isExpanded
+					? `<i class="icon keyboard_arrow_down"></i> <span>Show more</span>`
+					: `<i class="icon keyboard_arrow_up"></i> <span>Show less</span>`;
+			});
+
+			// Only show expand button if content overflows
+			if (codeContent.scrollHeight <= codeContent.clientHeight) {
+				expandButton.style.display = "none";
+			}
+		});
 	};
 
 	const addMessage = (message) => {
@@ -124,7 +237,8 @@ export default function openAIAssistantPage() {
 		if (message.role === "user") {
 			messageContent.textContent = message.content;
 		} else {
-			messageContent.innerHTML = markdownIt().render(message.content);
+			const md = markdownIt();
+			messageContent.innerHTML = md.render(message.content);
 		}
 
 		messageEl.appendChild(messageHeader);
@@ -229,8 +343,10 @@ export default function openAIAssistantPage() {
 			const item = document.createElement("div");
 			item.className = `history-item ${conv.id === currentConversationId ? "active" : ""}`;
 			item.onclick = () => {
-				if (conv.id !== currentConversationId)
+				if (conv.id !== currentConversationId) {
 					loadOrCreateConversation(conv.id);
+					toggleHistorySidebar();
+				}
 			};
 
 			const iconWrapper = document.createElement("div");
@@ -265,6 +381,14 @@ export default function openAIAssistantPage() {
 				chatHistory = [];
 				messagesFromDB.forEach((msg) => {
 					addMessage(msg);
+					if (msg.role === "assistant") {
+						formatCodeBlocks(
+							messageContainerRef.el.querySelector(
+								`#message-${msg.id} .message-content`,
+							),
+							msg.content,
+						);
+					}
 					chatHistory.push({
 						role: msg.role,
 						content: msg.content,
@@ -374,20 +498,6 @@ export default function openAIAssistantPage() {
 		});
 
 		try {
-			const assistantPlaceholderMsg = {
-				id: assistantMsgId,
-				conversationId: currentConversationId,
-				role: "assistant",
-				content: "▌",
-				timestamp: Date.now(),
-			};
-			addMessage(assistantPlaceholderMsg);
-
-			const messageElContent = messageContainerRef.el.querySelector(
-				`#message-${assistantMsgId} .message-content`,
-			);
-			removeLoading();
-
 			//Chat history not passed anymore, memory saver and checkpoint will handle context
 			const inputsForAgent = {
 				messages: messagesForAgentTurn,
@@ -401,6 +511,22 @@ export default function openAIAssistantPage() {
 					thread_id: currentConversationId,
 				},
 			});
+
+			// Remove loading indicator
+			removeLoading();
+
+			const assistantPlaceholderMsg = {
+				id: assistantMsgId,
+				conversationId: currentConversationId,
+				role: "assistant",
+				content: "▌",
+				timestamp: Date.now(),
+			};
+			addMessage(assistantPlaceholderMsg);
+
+			const messageElContent = messageContainerRef.el.querySelector(
+				`#message-${assistantMsgId} .message-content`,
+			);
 
 			for await (const eventData of stream) {
 				let messageChunkPayload = null;
@@ -450,18 +576,18 @@ export default function openAIAssistantPage() {
 			const isAbort =
 				err.name === "AbortError" ||
 				(err.message && /abort/i.test(err.message));
-			streamedContent = isAbort
-				? "Streaming cancelled by user."
-				: `Error: ${err.message || "Unknown error."}`;
+
+			const errorContent = isAbort
+				? `<span class="badge badge-yellow">Streaming cancelled by user.</span>`
+				: `<span class="badge badge-red">Error: ${err.message || "Unknown error."}</span>`;
+
+			streamedContent += errorContent;
 
 			const targetMessageElContent = messageContainerRef.el.querySelector(
 				`#message-${assistantMsgId} .message-content`,
 			);
 			if (targetMessageElContent) {
-				const errorColor = isAbort
-					? "var(--warning-text-color)"
-					: "var(--error-text-color)";
-				targetMessageElContent.innerHTML = `<span style="color: ${errorColor};">${isAbort ? streamedContent : md.render(streamedContent)}</span>`;
+				targetMessageElContent.innerHTML += errorContent;
 			}
 		} finally {
 			currentController = null;
@@ -499,45 +625,7 @@ export default function openAIAssistantPage() {
 				);
 				if (timeEl) timeEl.textContent = formatTime(finalTimestamp);
 
-				messageContentElToFinalize.innerHTML =
-					messageContentElToFinalize.innerHTML.replace(
-						/<pre><code(?: class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g,
-						(match, language, code) => {
-							language = language || "plaintext";
-							code = he.decode(code);
-							return `
-            <div class="code-block">
-            <div class="code-header">
-            <div class="code-language"><i class="icon code"></i><span>${language}</span></div>
-            <div class="code-actions"><button class="btn btn-icon code-copy" title="Copy code"><i class="icon copy"></i></button></div>
-            </div>
-            <div class="code-content"><pre><code class="language-${language}">${code}</code></pre></div>
-            <div class="code-expand"><i class="icon keyboard_arrow_down"></i><span>Show more</span></div>
-            </div>`;
-						},
-					);
-
-				messageContentElToFinalize
-					.querySelectorAll(".code-block")
-					.forEach((codeBlock) => {
-						const codeContent = codeBlock.querySelector(".code-content");
-						const codeElement = codeBlock.querySelector("pre code");
-						const copyButton = codeBlock.querySelector(".code-copy");
-						const expandButton = codeBlock.querySelector(".code-expand");
-						// expand/collapse functionality
-						expandButton.addEventListener("click", () => {
-							const isExpanded = codeContent.classList.contains("expanded");
-							codeContent.classList.toggle("expanded", !isExpanded);
-							expandButton.innerHTML = isExpanded
-								? `<i class="icon keyboard_arrow_down"></i> <span>Show more</span>`
-								: `<i class="icon keyboard_arrow_up"></i> <span>Show less</span>`;
-						});
-
-						// Only show expand button if content overflows
-						if (codeContent.scrollHeight <= codeContent.clientHeight) {
-							expandButton.style.display = "none";
-						}
-					});
+				formatCodeBlocks(messageContentElToFinalize, streamedContent);
 			}
 		}
 	};

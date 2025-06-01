@@ -413,6 +413,9 @@
       font-size: 0.625rem;
       font-weight: 500;
       margin-right: 0.25rem;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
     }
 
     .badge-blue {
