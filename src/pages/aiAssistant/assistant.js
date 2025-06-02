@@ -237,7 +237,11 @@ export default function openAIAssistantPage() {
 		if (message.role === "user") {
 			messageContent.textContent = message.content;
 		} else {
-			const md = markdownIt();
+			const md = markdownIt({
+				html: true,
+				linkify: true,
+				typographer: true,
+			});
 			messageContent.innerHTML = md.render(message.content);
 		}
 
@@ -680,6 +684,15 @@ export default function openAIAssistantPage() {
 			);
 			if (targetMessageElContent) {
 				targetMessageElContent.innerHTML += errorContent;
+			} else {
+				const assistantErrorMsg = {
+					id: assistantMsgId,
+					conversationId: currentConversationId,
+					role: "assistant",
+					content: errorContent,
+					timestamp: Date.now(),
+				};
+				addMessage(assistantErrorMsg);
 			}
 		} finally {
 			currentController = null;
