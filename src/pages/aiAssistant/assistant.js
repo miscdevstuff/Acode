@@ -222,8 +222,7 @@ export default function openAIAssistantPage() {
 				child: tag("i", {
 					className: "icon edit",
 				}),
-				// TODO: Implement edit functionality
-				//onclick: () => editMessage(message.id),
+				onclick: () => editMessage(message.id),
 			});
 			messageActions.appendChild(editBtn);
 		}
@@ -246,6 +245,74 @@ export default function openAIAssistantPage() {
 		messageEl.appendChild(messageContent);
 		messageContainerRef.el.appendChild(messageEl);
 		scrollToBottom();
+	};
+
+	const editMessage = (messageId) => {
+		const message = chatHistory.find((msg) => msg.id === messageId);
+		if (!message) return;
+
+		const messageEl = messageContainerRef.el.querySelector(
+			`#message-${message.id}`,
+		);
+		const messageContent = messageEl.querySelector(".message-content");
+
+		const editContainer = <div className="edit-container"></div>;
+
+		const textarea = (
+			<textarea
+				className="edit-textarea"
+				defaultValue={message.content}
+				placeholder="Edit your message..."
+				onkeydown={(e) => {
+					if (e.key === "Enter" && e.ctrlKey) {
+						e.preventDefault();
+						// TODO: save edit
+					} else if (e.key === "Escape") {
+						e.preventDefault();
+						// TODO: cancel edit
+					}
+				}}
+			/>
+		);
+
+		const editActions = <div className="edit-actions"></div>;
+
+		const editInfo = (
+			<div className="edit-info">
+				Press Ctrl+Enter to save, Escape to cancel
+			</div>
+		);
+
+		const editButtons = (
+			<div className="edit-buttons">
+				<button
+					className="btn btn-sm btn-outline"
+					onclick={() => {
+						const md = markdownIt({
+							html: true,
+							linkify: true,
+							typographer: true,
+						});
+						messageContent.innerHTML = md.render(message.content);
+					}}
+				>
+					<i className="icon clearclose"></i>{" "}
+					<span className="btn-text">Cancel</span>
+				</button>
+				<button className="btn btn-sm btn-primary">
+					<i className="icon check"></i> <span className="btn-text">Save</span>
+				</button>
+			</div>
+		);
+
+		editActions.append(editInfo, editButtons);
+		editContainer.append(textarea, editActions);
+
+		messageContent.innerHTML = "";
+		messageContent.appendChild(editContainer);
+
+		textarea.focus();
+		textarea.select();
 	};
 
 	/**
@@ -416,6 +483,7 @@ export default function openAIAssistantPage() {
 						);
 					}
 					chatHistory.push({
+						id: msg.id,
 						role: msg.role,
 						content: msg.content,
 					});
@@ -485,7 +553,10 @@ export default function openAIAssistantPage() {
 			role: "user",
 			content: userInput,
 		};
-		chatHistory.push(userMessageForAgent);
+		chatHistory.push({
+			...userMessageForAgent,
+			id: userMsgId.id,
+		});
 
 		chatInputRef.el.value = "";
 		handleChatInput();
@@ -631,6 +702,7 @@ export default function openAIAssistantPage() {
 
 			if (!wasError) {
 				chatHistory.push({
+					id: assistantFinalData.id,
 					role: "assistant",
 					content: streamedContent,
 				});
