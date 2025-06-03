@@ -1,6 +1,5 @@
 import { isAIMessageChunk } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import confirm from "dialogs/confirm";
 import select from "dialogs/select";
@@ -18,6 +17,7 @@ import {
 	getMessagesForConversation,
 	updateConversation,
 } from "./db";
+import { CordovaSqliteSaver } from "./memory";
 import { SYSTEM_PROMPT } from "./system_prompt";
 import { allTools } from "./tools";
 
@@ -39,7 +39,10 @@ export default function openAIAssistantPage() {
 
 	const GEMINI_API_KEY = ""; // Replace
 
-	const agentCheckpointer = new MemorySaver();
+	const searchTool = {
+		googleSearch: {},
+	};
+	const agentCheckpointer = new CordovaSqliteSaver();
 	const model = new ChatGoogleGenerativeAI({
 		model: "gemini-2.0-flash",
 		apiKey: GEMINI_API_KEY,
