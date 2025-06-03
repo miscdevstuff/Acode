@@ -120,7 +120,8 @@
     "mustache": "^4.2.0",
     "url-parse": "^1.5.10",
     "vanilla-picker": "^2.12.3",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "zod": "^3.25.47"
   },
   "browserslist": "cover 100%,not android < 5"
 }
