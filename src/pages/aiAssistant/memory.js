@@ -5,8 +5,8 @@ import {
 	copyCheckpoint,
 	getCheckpointId,
 } from "@langchain/langgraph-checkpoint";
-import { decode } from "utils/encodings";
 import { executeSqlAsync, openDB } from "./db";
+
 const checkpointMetadataKeys = ["source", "step", "writes", "parents"];
 function validateKeys(keys) {
 	return keys;
@@ -14,13 +14,13 @@ function validateKeys(keys) {
 const validCheckpointMetadataKeys = validateKeys(checkpointMetadataKeys);
 
 // Helper to convert Uint8Array or other forms to a UTF-8 string for DB storage
-async function ensureStringForDB(serializedData) {
+function ensureStringForDB(serializedData) {
 	if (typeof serializedData === "string") {
 		return serializedData;
 	}
 	if (serializedData instanceof Uint8Array) {
 		try {
-			return await decode(serializedData.buffer, "UTF-8");
+			return new TextDecoder().decode(serializedData);
 		} catch (e) {
 			console.error(
 				"TextDecoder failed for Uint8Array, falling back to JSON.stringify:",
@@ -108,8 +108,8 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 		const fetchDataPromise = new Promise((resolveData, rejectData) => {
 			this.db.readTransaction(
 				(tx) => {
-					let mainSql = `SELECT checkpoint_id, parent_checkpoint_id, type, checkpoint, metadata
-                               FROM checkpoints WHERE thread_id = ? AND checkpoint_ns = ?`;
+					let mainSql = `SELECT checkpoint_id, parent_checkpoint_id, checkpoint, metadata
+                               FROM langgraph_checkpoints WHERE thread_id = ? AND checkpoint_ns = ?`;
 					const mainParams = [
 						thread_id,
 						config.configurable?.checkpoint_ns ?? "",
@@ -132,7 +132,7 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 							const mainRowData = mainResultSet.rows.item(0);
 							const actual_checkpoint_id = mainRowData.checkpoint_id;
 
-							const writesSql = `SELECT task_id, channel, type, value FROM writes
+							const writesSql = `SELECT task_id, channel, value FROM writes
                                        WHERE thread_id = ? AND checkpoint_ns = ? AND checkpoint_id = ?`;
 							tx.executeSql(
 								writesSql,
@@ -148,7 +148,7 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 									}
 
 									if (mainRowData.parent_checkpoint_id) {
-										const sendsSql = `SELECT type, value FROM writes
+										const sendsSql = `SELECT value FROM writes
                                               WHERE thread_id = ? AND checkpoint_ns = ? AND checkpoint_id = ? AND channel = ?
                                               ORDER BY idx`;
 										tx.executeSql(
@@ -286,25 +286,22 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 		const [typeMd, rawSerializedMetadata] = this.serde.dumpsTyped(metadata);
 
 		// Ensure strings for DB
-		const finalSerializedCheckpoint = await ensureStringForDB(
+		const finalSerializedCheckpoint = ensureStringForDB(
 			rawSerializedCheckpoint,
 		);
-		const finalSerializedMetadata = await ensureStringForDB(
-			rawSerializedMetadata,
-		);
+		const finalSerializedMetadata = ensureStringForDB(rawSerializedMetadata);
 
 		return new Promise((resolve, reject) => {
 			this.db.transaction((tx) => {
 				executeSqlAsync(
 					tx,
-					`INSERT OR REPLACE INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type, checkpoint, metadata)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+					`INSERT OR REPLACE INTO langgraph_checkpoints (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint, metadata)
+                     VALUES ( ?, ?, ?, ?, ?, ?)`,
 					[
 						thread_id,
 						checkpoint_ns,
 						new_checkpoint_id,
 						parent_checkpoint_id,
-						typeCp,
 						finalSerializedCheckpoint,
 						finalSerializedMetadata,
 					],
@@ -339,89 +336,41 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 
 		if (!thread_id || !checkpoint_id) {
 			throw new Error(
-				"[CSCS] Missing thread_id or checkpoint_id in config for putWrites.",
+				"Missing thread_id or checkpoint_id in config for putWrites.",
 			);
 		}
 		if (!writes || writes.length === 0) {
-			return; // Nothing to write
+			return Promise.resolve();
 		}
 
-		// Stage 1: Prepare all data for writing
-		let preparedWrites;
-		try {
-			preparedWrites = await Promise.all(
-				writes.map(async (writeTuple, idx) => {
+		return new Promise((resolve, reject) => {
+			this.db.transaction((tx) => {
+				const writePromises = writes.map((writeTuple, idx) => {
 					const channel = writeTuple[0];
 					const value = writeTuple[1];
 					const [type, rawSerializedValue] = this.serde.dumpsTyped(value);
-					const finalSerializedValue =
-						await ensureStringForDB(rawSerializedValue);
-					const dbIdx =
-						WRITES_IDX_MAP[channel] !== undefined
-							? WRITES_IDX_MAP[channel]
-							: idx;
-					return { channel, type, finalSerializedValue, dbIdx };
-				}),
-			);
-		} catch (serializationError) {
-			console.error(
-				"[CSCS] Error during putWrites serialization phase:",
-				serializationError,
-			);
-			throw serializationError;
-		}
+					const finalSerializedValue = ensureStringForDB(rawSerializedValue); // Ensure string
 
-		// Stage 2: Execute all SQL writes sequentially within a single transaction using callbacks
-		return new Promise((resolve, reject) => {
-			this.db.transaction(
-				(tx) => {
-					let pending = preparedWrites.length;
-					let hasError = false;
-
-					preparedWrites.forEach(
-						({ channel, type, finalSerializedValue, dbIdx }) => {
-							tx.executeSql(
-								`INSERT OR REPLACE INTO writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, value)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-								[
-									thread_id,
-									checkpoint_ns,
-									checkpoint_id,
-									taskId,
-									dbIdx,
-									channel,
-									type,
-									finalSerializedValue,
-								],
-								() => {
-									if (--pending === 0 && !hasError) {
-										resolve();
-									}
-								},
-								(tx, error) => {
-									if (!hasError) {
-										hasError = true;
-										console.error("[CSCS] putWrites SQL error:", error);
-										reject(error);
-									}
-									return true; // still try remaining queries
-								},
-							);
-						},
+					return executeSqlAsync(
+						tx,
+						`INSERT OR REPLACE INTO writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, value)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+						[
+							thread_id,
+							checkpoint_ns,
+							checkpoint_id,
+							taskId,
+							WRITES_IDX_MAP[channel] || idx,
+							channel,
+							finalSerializedValue,
+						],
 					);
+				});
 
-					if (pending === 0) {
-						resolve();
-					}
-				},
-				(transactionError) => {
-					console.error(
-						"[CSCS] putWrites Transaction failed:",
-						transactionError,
-					);
-					reject(transactionError);
-				},
-			);
+				Promise.all(writePromises)
+					.then(() => resolve())
+					.catch(reject); // Will catch first error from Promise.all
+			}, reject); // Transaction errors
 		});
 	}
 
@@ -438,14 +387,16 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 		const thread_id = config.configurable?.thread_id;
 		const checkpoint_ns = config.configurable?.checkpoint_ns ?? "";
 
-		if (!thread_id) return;
+		if (!thread_id) {
+			return;
+		}
 
-		let checkpointIdRows = [];
-
+		let checkpointIdRows = []; // To store { checkpoint_id: string }
 		try {
 			await new Promise((resolveOuter, rejectOuter) => {
 				this.db.readTransaction((tx) => {
-					let sql = `SELECT checkpoint_id FROM checkpoints`;
+					let sql = `SELECT checkpoint_id FROM langgraph_checkpoints`;
+
 					const params = [];
 					const whereClauses = ["thread_id = ?", "checkpoint_ns = ?"];
 					params.push(thread_id, checkpoint_ns);
@@ -454,15 +405,15 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 						whereClauses.push("checkpoint_id < ?");
 						params.push(before.configurable.checkpoint_id);
 					}
-
+					if (filter && Object.keys(filter).length > 0) {
+					}
 					if (whereClauses.length > 0) {
 						sql += ` WHERE ${whereClauses.join(" AND ")}`;
 					}
-
 					sql += ` ORDER BY checkpoint_id DESC`;
-
 					if (limit) {
-						sql += ` LIMIT ${Number.parseInt(limit, 10) * (filter ? 5 : 1)}`;
+						// This limit is applied before JS filtering, so fetch more if JS filtering is heavy
+						sql += ` LIMIT ${Number.parseInt(limit, 10) * (filter ? 5 : 1)}`; // Fetch more if filtering
 					}
 
 					executeSqlAsync(tx, sql, params)
@@ -473,7 +424,7 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 							resolveOuter();
 						})
 						.catch(rejectOuter);
-				}, rejectOuter); // <- If the transaction itself fails
+				}, rejectOuter);
 			});
 
 			let yieldedCount = 0;
@@ -485,9 +436,7 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 						checkpoint_id: idRow.checkpoint_id,
 					},
 				};
-
 				const fullTuple = await this.getTuple(tupleConfig);
-
 				if (fullTuple) {
 					if (
 						filter &&
@@ -496,9 +445,8 @@ export class CordovaSqliteSaver extends BaseCheckpointSaver {
 							([key, value]) => fullTuple.metadata[key] === value,
 						)
 					) {
-						continue;
+						continue; // Skip if JS filter doesn't match
 					}
-
 					yield fullTuple;
 					yieldedCount++;
 					if (limit !== undefined && yieldedCount >= limit) break;

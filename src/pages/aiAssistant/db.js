@@ -29,7 +29,6 @@ async function initializeTables(dbInstance) {
 	return new Promise((resolve, reject) => {
 		dbInstance.transaction(
 			(tx) => {
-				// Conversations Table
 				tx.executeSql(`
         CREATE TABLE IF NOT EXISTS conversations (
         id TEXT PRIMARY KEY,
@@ -39,7 +38,6 @@ async function initializeTables(dbInstance) {
         profile TEXT
         )
         `);
-				// Messages Table
 				tx.executeSql(`
         CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
@@ -50,19 +48,31 @@ async function initializeTables(dbInstance) {
         FOREIGN KEY (conversationId) REFERENCES conversations(id) ON DELETE CASCADE
         )
         `);
-				// LangGraph Checkpoints Table
 				tx.executeSql(`
-        CREATE TABLE IF NOT EXISTS langgraph_checkpoints (
-        thread_id TEXT NOT NULL,
-        checkpoint_id TEXT NOT NULL,
-        parent_checkpoint_id TEXT,
-        checkpoint TEXT,       -- Store serialized CheckpointTuple as JSON string
-        updated_at INTEGER,    -- Unix timestamp (seconds or milliseconds)
-        PRIMARY KEY (thread_id, checkpoint_id)
-        )
-        `);
+                CREATE TABLE IF NOT EXISTS langgraph_checkpoints (
+                    thread_id TEXT NOT NULL,
+                    checkpoint_ns TEXT NOT NULL DEFAULT '',
+                    checkpoint_id TEXT NOT NULL,
+                    parent_checkpoint_id TEXT,
+                    checkpoint TEXT,
+                    metadata TEXT,
+                    updated_at INTEGER,
+                    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
+                )
+            `);
+				tx.executeSql(`
+                CREATE TABLE IF NOT EXISTS writes (
+                    thread_id TEXT NOT NULL,
+                    checkpoint_ns TEXT NOT NULL DEFAULT '',
+                    checkpoint_id TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    idx INTEGER NOT NULL,
+                    channel TEXT NOT NULL,
+                    value TEXT,
+                    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel)
+                )
+            `);
 
-				// Indexes
 				tx.executeSql(
 					`CREATE INDEX IF NOT EXISTS idx_messages_conversationId_timestamp ON messages (conversationId, timestamp ASC)`,
 				);
@@ -70,11 +80,13 @@ async function initializeTables(dbInstance) {
 					`CREATE INDEX IF NOT EXISTS idx_conversations_lastModifiedAt ON conversations (lastModifiedAt DESC)`,
 				);
 				tx.executeSql(
-					`CREATE INDEX IF NOT EXISTS idx_lg_checkpoints_thread_id_updated_at ON langgraph_checkpoints (thread_id, updated_at DESC)`,
+					`CREATE INDEX IF NOT EXISTS idx_lg_checkpoints_main ON langgraph_checkpoints (thread_id, checkpoint_ns, checkpoint_id DESC)`,
+				);
+				tx.executeSql(
+					`CREATE INDEX IF NOT EXISTS idx_writes_main ON writes (thread_id, checkpoint_ns, checkpoint_id, task_id, channel)`,
 				);
 			},
 			(transactionError) => {
-				// Error callback for the transaction
 				console.error(
 					"[DB] Transaction error during table initialization:",
 					transactionError,
@@ -82,7 +94,6 @@ async function initializeTables(dbInstance) {
 				reject(transactionError);
 			},
 			() => {
-				// Success callback for the transaction
 				resolve();
 			},
 		);

@@ -1,4 +1,4 @@
-import { isAIMessageChunk } from "@langchain/core/messages";
+import { isAIMessageChunk, isToolMessageChunk } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import confirm from "dialogs/confirm";
@@ -39,9 +39,6 @@ export default function openAIAssistantPage() {
 
 	const GEMINI_API_KEY = ""; // Replace
 
-	const searchTool = {
-		googleSearch: {},
-	};
 	const agentCheckpointer = new CordovaSqliteSaver();
 	const model = new ChatGoogleGenerativeAI({
 		model: "gemini-2.0-flash",
@@ -644,7 +641,9 @@ export default function openAIAssistantPage() {
 
 				let chunkText = "";
 				if (messageChunkPayload) {
-					if (
+					if (isToolMessageChunk(messageChunkPayload)) {
+						console.log("tool call", messageChunkPayload);
+					} else if (
 						isAIMessageChunk(messageChunkPayload) &&
 						messageChunkPayload.tool_call_chunks?.length
 					) {
