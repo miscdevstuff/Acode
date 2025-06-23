@@ -4,7 +4,9 @@ import box from "dialogs/box";
 import fsOperation from "fileSystem";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
+import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
+import markdownItTaskLists from "markdown-it-task-lists";
 import mimeType from "mime-types";
 import mustache from "mustache";
 import path from "path-browserify";
@@ -362,6 +364,8 @@ async function run(
 										.toLowerCase()
 										.replace(/[^a-z0-9]+/g, "-"),
 							})
+							.use(markdownItTaskLists)
+							.use(markdownItFootnote)
 							.render(file.session.getValue());
 						const doc = mustache.render($_markdown, {
 							html,
@@ -374,7 +378,7 @@ async function run(
 
 				default:
 					if (file && file.loaded && file.isUnsaved) {
-						if (filename.endsWith(".html")) {
+						if (file.filename.endsWith(".html")) {
 							sendHTML(file.session.getValue(), reqId);
 						} else {
 							sendText(
