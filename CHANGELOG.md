@@ -1,6 +1,6 @@
 # Change Log
 
-## v1.11.4 (960)
+## v1.11.4 (962)
 
 * Fix renaming current Termux URI file whilst viewing/editing it by @peasneovoyager2banana2
 * fix: html preview on unsaved files by @RohitKushvaha01
