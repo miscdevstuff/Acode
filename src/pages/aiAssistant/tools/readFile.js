@@ -27,6 +27,29 @@ class ReadFileTool extends StructuredTool {
 			.describe("line number to end reading on (1-based index, inclusive)"),
 	});
 
+	/**
+	 * Check if a URI is a SAF URI
+	 */
+	isSafUri(uri) {
+		return uri.startsWith("content://") && uri.includes("/tree/");
+	}
+
+	/**
+	 * Check if SAF URI already has the :: separator (complete format)
+	 */
+	isCompleteSafUri(uri) {
+		return this.isSafUri(uri) && uri.includes("::");
+	}
+
+	/**
+	 * Construct SAF URI for file access
+	 */
+	constructSafFileUri(baseUri, filePath) {
+		// For incomplete SAF URIs (without ::), construct the full format
+		// baseUri::primary:fullFilePath
+		return `${baseUri}::primary:${filePath}`;
+	}
+
 	async _call({ path, startLine, endLine }) {
 		try {
 			// Split the path to get project name and file path
@@ -42,8 +65,25 @@ class ReadFileTool extends StructuredTool {
 				return `Error: Project '${projectName}' not found in opened projects`;
 			}
 
-			// Construct the full file URL
-			const fileUrl = project.url + "/" + filePath;
+			let fileUrl;
+
+			// Check if this is a SAF URI
+			if (this.isSafUri(project.url)) {
+				if (this.isCompleteSafUri(project.url)) {
+					// SAF URI already has :: separator, just append the file path normally
+					// Handle both cases: with trailing slash or without
+					const baseUrl = project.url.endsWith("/")
+						? project.url
+						: project.url + "/";
+					fileUrl = baseUrl + filePath;
+				} else {
+					// SAF URI without :: separator, use the special format
+					fileUrl = this.constructSafFileUri(project.url, path);
+				}
+			} else {
+				// For regular file URIs, use the normal path concatenation
+				fileUrl = project.url + "/" + filePath;
+			}
 
 			// Read the file content
 			const content = await fsOperation(fileUrl).readFile("utf8");
