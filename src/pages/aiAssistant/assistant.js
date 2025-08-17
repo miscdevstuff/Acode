@@ -7,7 +7,7 @@ import Ref from "html-tag-js/ref";
 import EditorFile from "lib/editorFile";
 import settings from "lib/settings";
 import markdownIt from "markdown-it";
-import styles from "./assistant.module.scss";
+import styles from "./assistant.m.scss";
 import {
 	addConversation,
 	addMessageToDB,
@@ -23,12 +23,12 @@ import { allTools } from "./tools";
 
 export default function openAIAssistantPage() {
 	// References
-	const profileBtnRef = new Ref();
-	const historySidebarRef = new Ref();
-	const chatInputRef = new Ref();
-	const sendBtnRef = new Ref();
-	const messageContainerRef = new Ref();
-	const stopBtnRef = new Ref();
+	const profileBtnRef = Ref();
+	const historySidebarRef = Ref();
+	const chatInputRef = Ref();
+	const sendBtnRef = Ref();
+	const messageContainerRef = Ref();
+	const stopBtnRef = Ref();
 
 	let currentProfile = "ask";
 	let currentConversationId = null;
