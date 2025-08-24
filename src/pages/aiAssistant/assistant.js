@@ -37,12 +37,19 @@ export default function openAIAssistantPage() {
 	let currentController = null;
 	let aiTabInstance;
 
-	const GEMINI_API_KEY = ""; // Replace
+    if (!settings.value.aiApiKey) {
+        alert("Error", "Please set your AI Assistant API Key in Settings before using the assistant.");
+        return;
+    }
+    if (!settings.value.aiModel) {
+        alert("Error", "Please set your AI Assistant model in Settings before using the assistant.");
+        return;
+    }
 
 	const agentCheckpointer = new CordovaSqliteSaver();
 	const model = new ChatGoogleGenerativeAI({
-		model: "gemini-2.0-flash",
-		apiKey: GEMINI_API_KEY,
+		model: settings.value.aiModel,
+		apiKey: settings.value.aiApiKey,
 	});
 
 	// Get all tools as an array for the agent including search

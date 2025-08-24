@@ -151,6 +151,8 @@ class Settings {
 			checkFiles: true,
 			desktopMode: false,
 			console: this.CONSOLE_LEGACY,
+			aiApiKey: "",
+			aiModel: "gemini-2.0-flash",
 			keyboardMode: this.KEYBOARD_MODE_NO_SUGGESTIONS_AGGRESSIVE,
 			rememberFiles: true,
 			rememberFolders: true,

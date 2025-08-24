@@ -72,6 +72,26 @@ export default function otherSettings() {
 			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
 		},
 		{
+		    key: "aiApiKey",
+		    text: "AI Assistant API Key",
+		    placeholder: "Enter your API key",
+		    promptType: "text",
+		    promptOptions: {
+		        required: true
+		    },
+		    value: values.aiApiKey
+		},
+		{
+		    key: "aiModel",
+		    text: "AI Assistant Model",
+		    placeholder: "Enter your model",
+		    promptType: "text",
+		    promptOptions: {
+		        required: true
+		    },
+		    value: values.aiModel
+		},
+		{
 			key: "keyboardMode",
 			text: strings["keyboard mode"],
 			value: values.keyboardMode,
@@ -234,6 +254,14 @@ export default function otherSettings() {
 					helpers.error(error);
 				}
 			}
+
+			case "aiApiKey":
+			    await appSettings.update({ aiApiKey: value });
+			    break;
+
+			case "aiModel":
+			    await appSettings.update({ aiModel: value });
+			    break;
 
 			case "rememberFiles":
 				if (!value) {
