@@ -38,14 +38,20 @@ export default function openAIAssistantPage() {
 	let currentController = null;
 	let aiTabInstance;
 
-    if (!settings.value.aiApiKey) {
-        alert("Error", "Please set your AI Assistant API Key in Settings before using the assistant.");
-        return;
-    }
-    if (!settings.value.aiModel) {
-        alert("Error", "Please set your AI Assistant model in Settings before using the assistant.");
-        return;
-    }
+	if (!settings.value.aiApiKey) {
+		alert(
+			"Error",
+			"Please set your AI Assistant API Key in Settings before using the assistant.",
+		);
+		return;
+	}
+	if (!settings.value.aiModel) {
+		alert(
+			"Error",
+			"Please set your AI Assistant model in Settings before using the assistant.",
+		);
+		return;
+	}
 
 	const agentCheckpointer = new CordovaSqliteSaver();
 	const model = new ChatGoogleGenerativeAI({
