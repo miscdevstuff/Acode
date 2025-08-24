@@ -2,7 +2,11 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+env:
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
 jobs:
   spell-check:
@@ -33,3 +37,58 @@ jobs:
 
       - name: Run Biome
         run: biome ci .
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "adopt" # See 'Supported distributions' for available options
+          java-version: "21"
+
+#       - name: Workaround for "Build-tool 33.0.0 is missing DX at ..." error
+#         run: |
+#           ln -s $ANDROID_SDK_ROOT/build-tools/33.0.0/d8 $ANDROID_SDK_ROOT/build-tools/33.0.0/dx
+#           ln -s $ANDROID_SDK_ROOT/build-tools/33.0.0/lib/d8.jar $ANDROID_SDK_ROOT/build-tools/33.0.0/lib/dx.jar
+
+      - name: Add android sdk tools to path
+        run: |
+          export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools/
+          export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/
+          export PATH=$PATH:$ANDROID_SDK_ROOT/emulator/
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install cordova
+        run: npm install -g cordova
+
+      - name: Install yarn
+        run: npm install -g yarn
+
+      - name: Setup project, install app plugins and deps
+        run: yarn setup
+
+      - name: Configure the platform
+        run: yarn clean
+
+      - name: Build Android prod
+        run: yarn build paid prod
+
+      - name: Sign apk
+        run: |
+          apksigner="$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -r | head -n 1)"
+          ${apksigner} sign --ks public.jks --ks-key-alias public --ks-pass pass:public --key-pass pass:public --in ./platforms/android/app/build/outputs/apk/release/*.apk --out ./platforms/android/app/build/outputs/apk/release/app-release-signed.apk
+
+      - name: Upload apk
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-signed
+          path: ./platforms/android/app/build/outputs/apk/release/app-release-signed.apk
+          if-no-files-found: error
