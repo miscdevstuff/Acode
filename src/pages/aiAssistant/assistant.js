@@ -1,6 +1,7 @@
 import { isAIMessageChunk, isToolMessageChunk } from "@langchain/core/messages";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import select from "dialogs/select";
 import Ref from "html-tag-js/ref";
