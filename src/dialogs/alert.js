@@ -49,14 +49,6 @@ function alert(titleText, message, onhide) {
 		onclick: hide,
 	});
 
-	actionStack.push({
-		id: "alert",
-		action: hideAlert,
-	});
-
-	app.append(alertDiv, mask);
-	restoreTheme(true);
-
 	function hideAlert() {
 		alertDiv.classList.add("hide");
 		restoreTheme();
@@ -65,6 +57,14 @@ function alert(titleText, message, onhide) {
 			app.removeChild(mask);
 		}, 300);
 	}
+
+	actionStack.push({
+		id: "alert",
+		action: hideAlert,
+	});
+
+	app.append(alertDiv, mask);
+	restoreTheme(true);
 
 	function hide() {
 		if (onhide) onhide();
