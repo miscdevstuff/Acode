@@ -24,7 +24,9 @@
     "plugins": {
       "cordova-clipboard": {},
       "cordova-plugin-device": {},
-      "cordova-plugin-file": {},
+      "cordova-plugin-file": {
+        "ANDROIDX_WEBKIT_VERSION": "1.4.0"
+      },
       "cordova-plugin-sftp": {},
       "cordova-plugin-server": {},
       "cordova-plugin-ftp": {},
