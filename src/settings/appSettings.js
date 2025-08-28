@@ -72,18 +72,6 @@ export default function otherSettings() {
 			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
 		},
 		{
-			key: "aiApiKey",
-			text: "AI Assistant API Key",
-			value: values.aiApiKey,
-			prompt: "AI Assistant API Key",
-		},
-		{
-			key: "aiModel",
-			text: "AI Assistant Model",
-			value: values.aiModel,
-			prompt: "AI Assistant Model",
-		},
-		{
 			key: "keyboardMode",
 			text: strings["keyboard mode"],
 			value: values.keyboardMode,

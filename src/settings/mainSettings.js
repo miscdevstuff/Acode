@@ -12,6 +12,7 @@ import Sponsors from "pages/sponsors";
 import themeSetting from "pages/themeSetting";
 import helpers from "utils/helpers";
 import About from "../pages/about";
+import aiassistantSettings from "./aiassistantSettings.js";
 import otherSettings from "./appSettings";
 import backupRestore from "./backupRestore";
 import editorSettings from "./editorSettings";
@@ -79,7 +80,7 @@ export default function mainSettings() {
 			key: "reset",
 			text: strings["restore default settings"],
 			icon: "historyrestore",
-			index: 6,
+			index: 7,
 		},
 		{
 			key: "preview-settings",
@@ -88,10 +89,16 @@ export default function mainSettings() {
 			index: 4,
 		},
 		{
+			key: "ai-assistant-settings",
+			text: "Ai Assistant Settings",
+			icon: "licons robot",
+			index: 5,
+		},
+		{
 			key: "terminal-settings",
 			text: `${strings["terminal settings"]}`,
 			icon: "licons terminal",
-			index: 5,
+			index: 6,
 		},
 		{
 			key: "editSettings",
@@ -124,6 +131,7 @@ export default function mainSettings() {
 			case "backup-restore":
 			case "editor-settings":
 			case "preview-settings":
+			case "ai-assistant-settings":
 			case "terminal-settings":
 				appSettings.uiSettings[key].show();
 				break;
@@ -198,5 +206,6 @@ export default function mainSettings() {
 	appSettings.uiSettings["scroll-settings"] = scrollSettings();
 	appSettings.uiSettings["search-settings"] = searchSettings();
 	appSettings.uiSettings["preview-settings"] = previewSettings();
+	appSettings.uiSettings["ai-assistant-settings"] = aiassistantSettings();
 	appSettings.uiSettings["terminal-settings"] = terminalSettings();
 }
