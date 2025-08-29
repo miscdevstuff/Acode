@@ -1,50 +1,33 @@
-#!/bin/bash
+#! /bin/bash
 
-# Default values
-app="paid"
-mode="d"
-fdroidFlag=""
+app="$1"
+mode="$2"
+fdroidFlag="$3"
 webpackmode="development"
 cordovamode=""
 
-# Check all arguments for specific values
-for arg in "$@"; do
-    case "$arg" in
-        "free"|"paid")
-            app="$arg"
-            ;;
-        "p"|"prod"|"d"|"dev")
-            mode="$arg"
-            ;;
-        "fdroid")
-            fdroidFlag="fdroid"
-            ;;
-        *)
-            echo "Warning: Unknown argument '$arg' ignored"
-            ;;
-    esac
-done
-
 root=$(npm prefix)
 
-if [ -n "$TMPDIR" ] && [ -r "$TMPDIR" ] && [ -w "$TMPDIR" ]; then
-  tmpdir="$TMPDIR"
-elif [ -r "/tmp" ] && [ -w "/tmp" ]; then
-  tmpdir="/tmp"
-else
-  echo "Error: No usable temporary directory found (TMPDIR or /tmp not accessible)." >&2
-  exit 1
-fi
 
 if [[ "$fdroidFlag" == "fdroid" ]]; then
-  echo "true" > "$tmpdir/fdroid.bool"
+  echo "true" > "$root/fdroid.bool"
   cordova plugin remove com.foxdebug.acode.rk.exec.proot
+ 
 else
-  echo "false" > "$tmpdir/fdroid.bool"
+  echo "false" > "$root/fdroid.bool"
   cordova plugin add src/plugins/proot/
 fi
 
-# Normalize mode values
+if [ -z "$mode" ]
+then
+mode="d"
+fi
+
+if [ -z "$app" ]
+then
+app="paid"
+fi
+
 if [ "$mode" = "p" ] || [ "$mode" = "prod" ]
 then
 mode="p"
