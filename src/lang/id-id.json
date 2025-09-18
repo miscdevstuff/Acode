@@ -85,7 +85,7 @@
 	"soft tab": "Tab lunak",
 	"sort by name": "Urutkan berdasarkan nama",
 	"success": "Sukses",
-	"tab size": "Ukuram Tab",
+	"tab size": "Ukuran Tab",
 	"text wrap": "Bungkus Teks",
 	"theme": "Tema",
 	"unable to delete file": "Tidak dapat menghapus berkas",
@@ -423,9 +423,9 @@
 	"allFileAccess": "Semua akses berkas",
 	"fonts": "Huruf",
 	"sponsor": "Sponsor",
-	"downloads": "downloads",
-	"reviews": "reviews",
-	"overview": "Overview",
-	"contributors": "Contributors",
-	"quicktools:hyphen": "Insert hyphen symbol"
+	"downloads": "Unduhan",
+	"reviews": "Ulasan",
+	"overview": "Ikhtisar",
+	"contributors": "Kontributor",
+	"quicktools:hyphen": "Masukkan simbol tanda hubung"
 }
