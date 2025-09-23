@@ -36,8 +36,8 @@
       "cordova-sqlite-storage": {},
       "cordova-plugin-websocket": {},
       "cordova-plugin-buildinfo": {},
-      "cordova-plugin-browser": {},
       "cordova-plugin-system": {},
+      "cordova-plugin-browser": {},
       "com.foxdebug.acode.rk.exec.terminal": {}
     },
     "platforms": [
