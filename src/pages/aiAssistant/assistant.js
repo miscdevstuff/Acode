@@ -1,10 +1,11 @@
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import alert from "dialogs/alert";
 import { ChatOpenAI } from "@langchain/openai";
+import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import select from "dialogs/select";
 import Ref from "html-tag-js/ref";
 import EditorFile from "lib/editorFile";
+import settings from "lib/settings";
 import { createSessionManager } from "./agent/sessionManager";
 import styles from "./assistant.m.scss";
 import { CordovaSqliteSaver } from "./memory";
@@ -54,7 +55,7 @@ export default function openAIAssistantPage() {
 		apiKey: settings.value.aiApiKey,
 		streaming: true,
 		configuration: {
-			baseURL: settings.values.aiBaseUrl,
+			baseURL: settings.value.aiBaseUrl,
 		},
 	});
 
