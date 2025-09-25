@@ -151,6 +151,7 @@ class Settings {
 			checkFiles: true,
 			desktopMode: false,
 			console: this.CONSOLE_LEGACY,
+			aiProvider: "openai",
 			aiApiKey: "",
 			aiModel: "gemini-2.0-flash",
 			aiBaseUrl: "https://openrouter.ai/api/v1",

@@ -1,3 +1,4 @@
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatOpenAI } from "@langchain/openai";
 import alert from "dialogs/alert";
@@ -43,6 +44,7 @@ export default function openAIAssistantPage() {
 	}
 
 	const chatStore = createChatStore();
+	let model;
 
 	const messageRenderer = createMessageRenderer({
 		messageContainerRef,
@@ -50,14 +52,32 @@ export default function openAIAssistantPage() {
 	});
 
 	const agentCheckpointer = new CordovaSqliteSaver();
-	const model = new ChatOpenAI({
-		model: settings.value.aiModel,
-		apiKey: settings.value.aiApiKey,
-		streaming: true,
-		configuration: {
-			baseURL: settings.value.aiBaseUrl,
-		},
-	});
+	if (settings.value.aiProvider === "openai") {
+		if (!settings.value.aiBaseUrl) {
+			alert(
+				"Error",
+				"Please set your API base url in Settings before using the assistant.",
+			);
+			return;
+		}
+		model = new ChatOpenAI({
+			model: settings.value.aiModel,
+			apiKey: settings.value.aiApiKey,
+			streaming: true,
+			configuration: {
+				baseURL: settings.value.aiBaseUrl,
+			},
+		});
+	} else if (settings.value.aiProvider === "gemini") {
+		model = new ChatGoogleGenerativeAI({
+			model: settings.value.aiModel,
+			apiKey: settings.value.aiApiKey,
+			streaming: true,
+		});
+	} else {
+		alert("Error", `Unsupported AI provider: ${settings.value.aiProvider}`);
+		return;
+	}
 
 	const toolsArray = Object.values(allTools);
 
