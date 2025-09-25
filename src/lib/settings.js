@@ -153,6 +153,7 @@ class Settings {
 			console: this.CONSOLE_LEGACY,
 			aiApiKey: "",
 			aiModel: "gemini-2.0-flash",
+			aiBaseUrl: "https://openrouter.ai/api/v1",
 			keyboardMode: this.KEYBOARD_MODE_NO_SUGGESTIONS_AGGRESSIVE,
 			rememberFiles: true,
 			rememberFolders: true,

@@ -19,6 +19,13 @@ export default function aiassistantSettings() {
 			prompt: "Model",
 			info: "Enter your AI model here.",
 		},
+		{
+		    key: "aiBaseUrl",
+		    text: "API Base URL",
+		    value: values.aiBaseUrl,
+		    prompt: "API Base URL",
+		    info: "Enter base url of your api here.",
+		}
 	];
 
 	return settingsPage(title, items, callback);
