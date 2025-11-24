@@ -78,6 +78,10 @@ export default function otherSettings() {
 			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
 		},
 		{
+			key: "cleanInstallState",
+			text: strings["clean install state"],
+		},
+		{
 			key: "keyboardMode",
 			text: strings["keyboard mode"],
 			value: values.keyboardMode,
@@ -244,6 +248,28 @@ export default function otherSettings() {
 					helpers.error(error);
 				}
 				break;
+			}
+
+			case "cleanInstallState": {
+				const INSTALL_STATE_STORAGE = Url.join(DATA_STORAGE, ".install-state");
+
+				const fs = fsOperation(INSTALL_STATE_STORAGE);
+
+				if (!(await fs.exists())) {
+					toast(strings["no such file or directory"]);
+					break;
+				}
+
+				loader.create("loading...");
+
+				try {
+					await fs.delete();
+					loader.destroy();
+					toast(strings["success"]);
+				} catch (error) {
+					helpers.error(error);
+					loader.destroy();
+				}
 			}
 
 			case "rememberFiles":
